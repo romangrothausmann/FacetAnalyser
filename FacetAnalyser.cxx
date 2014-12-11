@@ -93,8 +93,8 @@ int FacetAnalyser::RequestData(
 
     ////regard normals coords as point coords
     vtkSmartPointer<vtkPoints> Points = vtkSmartPointer<vtkPoints>::New();
-    vtkIdType ndp= normals->GetNumberOfTuples();
-    for(vtkIdType i= 0; i < ndp; i++)
+    vtkIdType NumPolyDataPoints= normals->GetNumberOfTuples();
+    for(vtkIdType i= 0; i < NumPolyDataPoints; i++)
         Points->InsertNextPoint(normals->GetTuple3(i));
 
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
@@ -110,6 +110,7 @@ int FacetAnalyser::RequestData(
     Splatter->SetAccumulationModeToSum();
     Splatter->ScalarWarpingOn(); //use individual weights
     Splatter->CappingOff(); //don't pad with 0
+    Splatter->Update();
  
     vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
     cast->SetInputConnection(Splatter->GetOutputPort());
@@ -160,7 +161,7 @@ int FacetAnalyser::RequestData(
 
     typedef itk::HMinimaImageFilter<GreyImageType, GreyImageType> HMType; //seems for hmin in-type==out-type!!!
     HMType::Pointer hm= HMType::New();
-    hm->SetHeight(1 / double(ndp) * this->MinTrianglesPerFacet);
+    hm->SetHeight(this->MinTrianglesPerFacet / NumPolyDataPoints);
     hm->SetFullyConnected(ws1_conn);
     hm->SetInput(ss->GetOutput());
 
@@ -251,9 +252,7 @@ int FacetAnalyser::RequestData(
     Splatter2->SetAccumulationModeToSum();
     Splatter2->ScalarWarpingOn(); //use individual weights
     Splatter2->CappingOff(); //don't pad with 0
-    //Splatter->SetScaleFactor(atof(argv[4]));//scale comes from each point
-    //FilterWatcher watcher(Splatter, "filter");
-    //Splatter->Update();
+    Splatter2->Update();
 
     vtkImageCast* cast2 = vtkImageCast::New();
     cast2->SetInputConnection(Splatter2->GetOutputPort());
@@ -270,6 +269,62 @@ int FacetAnalyser::RequestData(
     MaskType2::Pointer mask2 = MaskType2::New();
     mask2->SetInput1(ch2->GetOutput());
     mask2->SetInput2(vtkitkf2->GetOutput()); //mask
+    mask2->Update();
+
+
+    /////////////create first output/////////////
+
+    ///////////probe each splat point value
+    vtkDoubleArray* splatValues= vtkDoubleArray::SafeDownCast(Splatter->GetOutput()->GetPointData()->GetScalars());
+
+    vtkSmartPointer<vtkIdTypeArray> fId= vtkSmartPointer<vtkIdTypeArray>::New();
+    fId->SetName("FacetIds");
+    fId->SetNumberOfComponents(1);
+
+    vtkSmartPointer<vtkDoubleArray> fPb= vtkSmartPointer<vtkDoubleArray>::New();
+    fPb->SetName("FacetProbabilities");
+    fPb->SetNumberOfComponents(1);
+
+    for(vtkIdType k= 0; k < NumPolyDataPoints; k++){
+        double pp[3];
+        Points->GetPoint(k, pp); 
+        vtkIdType pi[3];
+        vtkIdType idx= Splatter->ProbePoint(pp, pi);
+
+        if (idx < 0){
+            vtkErrorMacro(<< "Prope Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
+            return VTK_ERROR;
+            }
+
+        ////get probability value
+        double tv= splatValues->GetValue(idx);
+
+        ////get label value
+        LImageType::IndexType lidx;
+        lidx[0]= pi[0];
+        lidx[1]= pi[1];
+        lidx[2]= pi[2];
+        LabelType tl= mask2->GetOutput()->GetPixel(lidx);
+        //LabelType tl= mask2->GetOutput()->GetPixel(dynamic_cast<LImageType::IndexType>(idx));//does not work
+
+        fId->InsertNextValue(tl);
+        fPb->InsertNextValue(tv);
+        }
+
+    // Copy original points and point data
+    output->CopyStructure(input);
+    output->GetPointData()->PassData(input->GetPointData());
+    output->GetCellData()->PassData(input->GetCellData());
+    output->GetCellData()->AddArray(fId);
+    output->GetCellData()->AddArray(fPb);
+
+
+
+    /////////////create second output/////////////
+
+
+
+    /////////////create data for second output/////////////
 
     typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
     typedef itk::LabelMap< LabelObjectType > LabelMapType;
@@ -365,69 +420,6 @@ The inverse of the length of the centre vector is therefor a measure of how conc
     //of.close();
     fclose(of);
 
-
-
-///////////probe each splat point value ;-)))
-    vtkPoints* tps = vtkPoints::New();
-    tps= polydata->GetPoints();
-
-    vtkDataArray *tvs=NULL;
-    //tvs= vtkDoubleArray::SafeDownCast(Splatter->GetOutput()->GetPointData()->GetScalars()); //triangel values
-    tvs= Splatter->GetOutput()->GetPointData()->GetScalars(); //triangel values
-
-//     LImageType tls;
-//     tls= mask2->GetOutput(); //triangle facte labels   Splatter->GetOutput()->GetPointData()->GetScalars();
-
-    vtkIdType nt, k, idx, pi[3];
-    //unsigned int idx;
-    LImageType::IndexType lidx;
-    //nt= polydata->GetPointData()->GetNumberOfPoints();
-    nt= tps->GetNumberOfPoints();
-
-    FILE *tf;
-    tf= fopen ((fn + ".tdat").data(),"w");
-    fprintf(tf, "#i\tlabel\tvalue\n");
-
-
-    vtkSmartPointer<vtkIdTypeArray> fId= vtkSmartPointer<vtkIdTypeArray>::New();
-    fId->SetName("FacetIds");
-    fId->SetNumberOfComponents(1);
-
-    vtkSmartPointer<vtkDoubleArray> fPb= vtkSmartPointer<vtkDoubleArray>::New();
-    fPb->SetName("FacetProbabilities");
-    fPb->SetNumberOfComponents(1);
-
-    LabelType tl;
-    double pp[3], tv;
-    for(k= 0; k < nt; k++){
-        tps->GetPoint(k, pp); 
-        idx= Splatter->ProbePoint(pp, pi);
-        lidx[0]= pi[0]; //this is hard coding the dim to equal 3!!!
-        lidx[1]= pi[1]; //this is hard coding the dim to equal 3!!!
-        lidx[2]= pi[2]; //this is hard coding the dim to equal 3!!!
-        tv= *tvs->GetTuple(idx);
-        //tl= tls->GetPixel(IndexType(idx));
-        tl= mask2->GetOutput()->GetPixel(lidx);
-
-        if (idx < 0){
-            vtkErrorMacro(<< "Prope Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
-            return VTK_ERROR;
-            }
-
-        //std::cerr << tl << std::endl;
-
-        fId->InsertNextValue(tl);
-        fPb->InsertNextValue(tv);
-
-        }
-    fclose(tf);
-
-    // Copy original points and point data
-    output->CopyStructure( input );
-    output->GetPointData()->PassData(input->GetPointData());
-    output->GetCellData()->PassData(input->GetCellData());
-    output->GetCellData()->AddArray(fId);
-    output->GetCellData()->AddArray(fPb);
 
 
 
