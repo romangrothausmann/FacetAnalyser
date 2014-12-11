@@ -357,7 +357,6 @@ int FacetAnalyser::RequestData(
     converter->SetComputePerimeter(false);
     converter->Update();
 
-    double tfw= 0;
     LabelMapType::Pointer labelMap = converter->GetOutput();
     const LabelObjectType * labelObject;
     for( unsigned int label=1; label<=labelMap->GetNumberOfLabelObjects(); label++ )
@@ -379,16 +378,11 @@ int FacetAnalyser::RequestData(
         c[1]= labelObject->GetCenterOfGravity()[1];
         c[2]= labelObject->GetCenterOfGravity()[2];
         fw= labelObject->GetSum();
-        tfw+= fw;
         facetNormals->InsertNextTuple(c);
         relFacetSizes->InsertNextValue(fw);
         absFacetSizes->InsertNextValue(fw * totalPolyDataArea);
         facetNormalPoints->InsertNextPoint(0,0,0);
         }
-
-
-    if (tfw != 1)
-        std::cerr << "Total rel. facet size != 1: " << tfw << std::endl; 
 
 
     /////////////create second output/////////////
