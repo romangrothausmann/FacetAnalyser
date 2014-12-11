@@ -18,3 +18,4 @@ todo:
 - clean-up
 -- remove unnecessary Updates?
 
+- convert splatter2 to vtkFastSplatter with an image of only 1 voxel?

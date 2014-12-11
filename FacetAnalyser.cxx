@@ -18,6 +18,8 @@
 #include <vtkIdTypeArray.h>
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
+#include <vtkPlanes.h>
+#include <vtkHull.h>
 
 #include <itkVTKImageToImageFilter.h>
 #include <itkShiftScaleImageFilter.h>
@@ -44,7 +46,7 @@ vtkStandardNewMacro(FacetAnalyser);
 //----------------------------------------------------------------------------
 // Description:
 FacetAnalyser::FacetAnalyser(){
-    //this->SetNumberOfOutputPorts(2);
+    this->SetNumberOfOutputPorts(2);
 
     this->SampleSize= 101;
     this->AngleUncertainty= 10;
@@ -62,14 +64,15 @@ int FacetAnalyser::RequestData(
     vtkInformation *inInfo0 = inputVector[0]->GetInformationObject(0);
     //vtkInformation *inInfo1 = inputVector[0]->GetInformationObject(1);
     vtkInformation *outInfo0 = outputVector->GetInformationObject(0);
-    //vtkInformation *outInfo1 = outputVector->GetInformationObject(1);
+    vtkInformation *outInfo1 = outputVector->GetInformationObject(1);
 
     // get the input and ouptut
     vtkPolyData *input = vtkPolyData::SafeDownCast(
         inInfo0->Get(vtkDataObject::DATA_OBJECT()));
-    //vtkImplicitFunction *inputIF = vtkImplicitFunction::SafeDownCast(inInfo1->Get(vtkDataObject::DATA_OBJECT()));
-    vtkPolyData *output = vtkPolyData::SafeDownCast(
+    vtkPolyData *output0 = vtkPolyData::SafeDownCast(
         outInfo0->Get(vtkDataObject::DATA_OBJECT()));
+    vtkPolyData *output1 = vtkPolyData::SafeDownCast(
+        outInfo1->Get(vtkDataObject::DATA_OBJECT()));
 
 
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
@@ -89,26 +92,33 @@ int FacetAnalyser::RequestData(
     cellArea->Update();
 
     vtkDataArray *normals= PDnormals0->GetOutput()->GetCellData()->GetNormals();
-    vtkDataArray *areas= cellArea->GetOutput()->GetCellData()->GetArray("Quality");
+    vtkDoubleArray *areas= vtkDoubleArray::SafeDownCast(cellArea->GetOutput()->GetCellData()->GetArray("Quality"));
+
+    vtkIdType NumPolyDataPoints= normals->GetNumberOfTuples();
+
+    ////vtkMeshQuality has no sum (only min, max, avg) so calc it here:
+    double totalPolyDataArea= 0;
+    for(vtkIdType k= 0; k < NumPolyDataPoints; k++)
+        totalPolyDataArea+= areas->GetValue(k);
 
     ////regard normals coords as point coords
     vtkSmartPointer<vtkPoints> Points = vtkSmartPointer<vtkPoints>::New();
-    vtkIdType NumPolyDataPoints= normals->GetNumberOfTuples();
     for(vtkIdType i= 0; i < NumPolyDataPoints; i++)
         Points->InsertNextPoint(normals->GetTuple3(i));
 
-    vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
-    polydata->SetPoints(Points);
-    polydata->GetPointData()->SetScalars(areas);
+    vtkSmartPointer<vtkPolyData> polydata0 = vtkSmartPointer<vtkPolyData>::New();
+    polydata0->SetPoints(Points);
+    polydata0->GetPointData()->SetScalars(areas);
 
     vtkSmartPointer<vtkGaussianSplatter> Splatter = vtkSmartPointer<vtkGaussianSplatter>::New();
-    Splatter->SetInputData(polydata);
+    Splatter->SetInputData(polydata0);
     Splatter->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
     Splatter->SetExponentFactor(-f); //GaussianSplat decay value
     Splatter->SetRadius(R); //GaussianSplat truncated outside Radius
     Splatter->SetAccumulationModeToSum();
     Splatter->ScalarWarpingOn(); //use individual weights
+    Splatter->SetScaleFactor(1/totalPolyDataArea);
     Splatter->CappingOff(); //don't pad with 0
     Splatter->Update();
  
@@ -244,13 +254,14 @@ int FacetAnalyser::RequestData(
 
     ////spalter only single points with weights    
     vtkGaussianSplatter *Splatter2 = vtkGaussianSplatter::New();
-    Splatter2->SetInputData(polydata);
+    Splatter2->SetInputData(polydata0);
     Splatter2->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter2->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
     Splatter2->SetExponentFactor(-1); //GaussianSplat decay value
     Splatter2->SetRadius(0); //only splat single points
     Splatter2->SetAccumulationModeToSum();
     Splatter2->ScalarWarpingOn(); //use individual weights
+    Splatter2->SetScaleFactor(1/totalPolyDataArea);
     Splatter2->CappingOff(); //don't pad with 0
     Splatter2->Update();
 
@@ -312,20 +323,29 @@ int FacetAnalyser::RequestData(
         }
 
     // Copy original points and point data
-    output->CopyStructure(input);
-    output->GetPointData()->PassData(input->GetPointData());
-    output->GetCellData()->PassData(input->GetCellData());
-    output->GetCellData()->AddArray(fId);
-    output->GetCellData()->AddArray(fPb);
-
-
-
-    /////////////create second output/////////////
+    output0->CopyStructure(input);
+    output0->GetPointData()->PassData(input->GetPointData());
+    output0->GetCellData()->PassData(input->GetCellData());
+    output0->GetCellData()->AddArray(fId);
+    output0->GetCellData()->AddArray(fPb);
 
 
 
     /////////////create data for second output/////////////
 
+    vtkSmartPointer<vtkDoubleArray> facetNormals= vtkSmartPointer<vtkDoubleArray>::New();
+    facetNormals->SetNumberOfComponents(3);
+    facetNormals->SetName ("facetNormals");
+
+    vtkSmartPointer<vtkDoubleArray> relFacetSizes= vtkSmartPointer<vtkDoubleArray>::New();
+    relFacetSizes->SetNumberOfComponents(1);
+    relFacetSizes->SetName ("relFacetSize");
+
+    vtkSmartPointer<vtkDoubleArray> absFacetSizes= vtkSmartPointer<vtkDoubleArray>::New();
+    absFacetSizes->SetNumberOfComponents(1);
+    absFacetSizes->SetName ("absFacetSize");
+
+    vtkSmartPointer<vtkPoints> facetNormalPoints = vtkSmartPointer<vtkPoints>::New();
     typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
     typedef itk::LabelMap< LabelObjectType > LabelMapType;
 
@@ -337,19 +357,7 @@ int FacetAnalyser::RequestData(
     converter->SetComputePerimeter(false);
     converter->Update();
 
-    vtkPoints* fpoints = vtkPoints::New();
-    vtkFloatArray* weights = vtkFloatArray::New();
-    weights->SetNumberOfComponents(1);
-    weights->SetName ("weight");
-
-    FILE *off;
-    //static const char*  fn= "test";
-    static const std::string fn= "test";
-
-    off= fopen ((fn + ".fdat").data(),"w");
-    fprintf(off, "#i\tfn_x\tfn_y\tfn_z\trel_facet_size\tabs_facet_size\n"); //local max value
-    double c_x, c_y, c_z, fw, tfw= 0;
- 
+    double tfw= 0;
     LabelMapType::Pointer labelMap = converter->GetOutput();
     const LabelObjectType * labelObject;
     for( unsigned int label=1; label<=labelMap->GetNumberOfLabelObjects(); label++ )
@@ -359,34 +367,53 @@ int FacetAnalyser::RequestData(
             }
         catch( itk::ExceptionObject exp ){
             if (strstr(exp.GetDescription(), "No label object with label")){
-                //std::cerr << exp.GetDescription() << std::endl;
-                std::cout << "Missing label: " << label << std::endl;
+                std::cerr << "Missing label: " << label << std::endl;
                 continue;
                 }
             }
-
-/*******************
-Since GetCenterOfGravity(), GetCentroid() are in 3D the centres can lie off the unit sphere!
-The inverse of the length of the centre vector is therefor a measure of how concentrated/dispersed the label is and therefor how destinct a facet is
-*/
-//         c_x= labelObject->GetCentroid()[0];
-//         c_y= labelObject->GetCentroid()[1];
-//         c_z= labelObject->GetCentroid()[2];
-        c_x= labelObject->GetCenterOfGravity()[0];
-        c_y= labelObject->GetCenterOfGravity()[1];
-        c_z= labelObject->GetCenterOfGravity()[2];
+  
+        double c[3], fw;
+        //// Since GetCenterOfGravity(), GetCentroid() are in 3D the centres can lie off the unit sphere!
+        //// The inverse of the length of the centre vector is therefor a measure of how concentrated/dispersed the label is and therefor how destinct a facet is
+        c[0]= labelObject->GetCenterOfGravity()[0];
+        c[1]= labelObject->GetCenterOfGravity()[1];
+        c[2]= labelObject->GetCenterOfGravity()[2];
         fw= labelObject->GetSum();
-        //fprintf(off, "%d\t%f\t%f\t%f\t%f\t%f\n",label, c_x, c_y, c_z, (labelObject->GetMaximum()) / labelObject->GetSize(), fw / ts); //GetSize(), GetVariance()
-        fprintf(off, "%d\t%f\t%f\t%f\t%f\t%f\n",label, c_x, c_y, c_z, fw, fw); //GetSize(), GetVariance()
-        fpoints->InsertNextPoint(c_x, c_y, c_z);
-        weights->InsertNextValue(fw); //InsertNextTuple1
         tfw+= fw;
-        //fpoints->SetScalar(fw); //not possible!
+        facetNormals->InsertNextTuple(c);
+        relFacetSizes->InsertNextValue(fw);
+        absFacetSizes->InsertNextValue(fw * totalPolyDataArea);
+        facetNormalPoints->InsertNextPoint(0,0,0);
         }
-    fclose(off);
 
-    //unsigned int nfp= fpoints->GetNumberOfPoints();
-    vtkIdType nfp= fpoints->GetNumberOfPoints();
+
+    if (tfw != 1)
+        std::cerr << "Total rel. facet size != 1: " << tfw << std::endl; 
+
+
+    /////////////create second output/////////////
+
+    vtkSmartPointer<vtkPlanes> planes= vtkSmartPointer<vtkPlanes>::New();
+    planes->SetPoints(facetNormalPoints);
+    planes->SetNormals(facetNormals);
+
+    //vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
+    vtkSmartPointer<vtkHull> hull= vtkSmartPointer<vtkHull>::New();
+    hull->SetPlanes(planes);
+    hull->SetInputData(input);
+    //hull->GenerateHull(polydata1, -20, 20, -20, 20, -20, 20)
+    hull->Update();
+
+    output1->ShallowCopy(hull->GetOutput());
+    output1->GetCellData()->SetNormals(facetNormals);
+    output1->GetCellData()->AddArray(relFacetSizes);
+    output1->GetCellData()->AddArray(absFacetSizes);
+
+    static const std::string fn= "test";
+
+
+    //unsigned int nfp= facetNormals->GetNumberOfPoints();
+    vtkIdType nfp= facetNormals->GetNumberOfTuples();
 
     //fstream of;
     //of.open((fn + ".adat").data(), ios::out);
@@ -404,12 +431,12 @@ The inverse of the length of the centre vector is therefor a measure of how conc
 
         for(u= 0; u < nfp - 1 ; u++){
             for(v= u + 1; v < nfp; v++){
-                fpoints->GetPoint(u, p0); 
-                fpoints->GetPoint(v, p1);
+                facetNormals->GetTuple(u, p0); 
+                facetNormals->GetTuple(v, p1);
                 vtkMath::Normalize(p0);
                 vtkMath::Normalize(p1);
                 angle= acos(vtkMath::Dot(p0, p1)) * 180.0 / vtkMath::Pi();
-                aw= 2 / (1/weights->GetTuple1(u) + 1/weights->GetTuple1(v)); //harmonic mean because its the "smallest" of the Pythagorean means: http://en.wikipedia.org/wiki/Pythagorean_means
+                aw= 2 / (1/relFacetSizes->GetTuple1(u) + 1/relFacetSizes->GetTuple1(v)); //harmonic mean because its the "smallest" of the Pythagorean means: http://en.wikipedia.org/wiki/Pythagorean_means
                 //cout << angle << "; ";
                 fprintf(of, "%lld\t%lld\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", u+1 , v+1, p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], angle, aw);
                 }
