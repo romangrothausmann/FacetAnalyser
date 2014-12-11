@@ -40,6 +40,10 @@ private:
   FacetAnalyser(const FacetAnalyser&);  // Not implemented.
   void operator=(const FacetAnalyser&);  // Not implemented.
 
+  vtkIdType CantorPairing(vtkIdType x, vtkIdType y);
+  // vtkIdType computeX(vtkIdType z);
+  // vtkIdType computeY(vtkIdType z);
+
 };
 
 #endif

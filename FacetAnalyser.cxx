@@ -358,9 +358,10 @@ int FacetAnalyser::RequestData(
     converter->Update();
 
     LabelMapType::Pointer labelMap = converter->GetOutput();
-    const LabelObjectType * labelObject;
-    for( unsigned int label=1; label<=labelMap->GetNumberOfLabelObjects(); label++ )
-        {
+    vtkIdType NumFacets= labelMap->GetNumberOfLabelObjects();
+
+    for(unsigned int label= 1; label <= NumFacets; label++){//skipping bg label 0, ie the "unfacetted" regions
+        const LabelObjectType* labelObject;
         try{
             labelObject = labelMap->GetLabelObject( label );
             }
@@ -403,57 +404,70 @@ int FacetAnalyser::RequestData(
     output1->GetCellData()->AddArray(relFacetSizes);
     output1->GetCellData()->AddArray(absFacetSizes);
 
-    static const std::string fn= "test";
 
+    /////////////create second output field data/////////////
+    
+    vtkSmartPointer<vtkIdTypeArray> cellPairingIds= vtkSmartPointer<vtkIdTypeArray>::New();
+    cellPairingIds->SetNumberOfComponents(1);
+    cellPairingIds->SetName ("cellPairingIds");
 
-    //unsigned int nfp= facetNormals->GetNumberOfPoints();
-    vtkIdType nfp= facetNormals->GetNumberOfTuples();
+    vtkSmartPointer<vtkDoubleArray> interplanarAngles= vtkSmartPointer<vtkDoubleArray>::New();
+    interplanarAngles->SetNumberOfComponents(1);
+    interplanarAngles->SetName ("interplanarAngles");
 
-    //fstream of;
-    //of.open((fn + ".adat").data(), ios::out);
-    //of << "#p0_x\tp0_y\tp0_z\tp1_x\tp1_y\tp1_z\ta" << endl;
-    FILE *of;
-    of= fopen ((fn + ".adat").data(),"w");
-    fprintf(of, "#i1\ti2\tp0_x\tp0_y\tp0_z\tp1_x\tp1_y\tp1_z\tangle\ta_weight\n");
+    vtkSmartPointer<vtkDoubleArray> angleWeights= vtkSmartPointer<vtkDoubleArray>::New();
+    angleWeights->SetNumberOfComponents(1);
+    angleWeights->SetName ("angleWeights");
 
-    if(nfp > 1){
-
-        double angle, aw;
-        double p0[3], p1[3];
-        //unsigned int u,v;
-        vtkIdType u,v;
-
-        for(u= 0; u < nfp - 1 ; u++){
-            for(v= u + 1; v < nfp; v++){
+    if(NumFacets > 1){
+        for(vtkIdType u= 0; u < NumFacets - 1 ; u++){
+            for(vtkIdType v= u + 1; v < NumFacets; v++){
+                double p0[3], p1[3];
                 facetNormals->GetTuple(u, p0); 
                 facetNormals->GetTuple(v, p1);
                 vtkMath::Normalize(p0);
                 vtkMath::Normalize(p1);
-                angle= acos(vtkMath::Dot(p0, p1)) * 180.0 / vtkMath::Pi();
-                aw= 2 / (1/relFacetSizes->GetTuple1(u) + 1/relFacetSizes->GetTuple1(v)); //harmonic mean because its the "smallest" of the Pythagorean means: http://en.wikipedia.org/wiki/Pythagorean_means
-                //cout << angle << "; ";
-                fprintf(of, "%lld\t%lld\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", u+1 , v+1, p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], angle, aw);
+                double angle= acos(vtkMath::Dot(p0, p1)) * 180.0 / vtkMath::Pi();
+                double aw= 2 / (1/relFacetSizes->GetTuple1(u) + 1/relFacetSizes->GetTuple1(v)); 
+ 
+                cellPairingIds->InsertNextValue(CantorPairing(u,v));
+                interplanarAngles->InsertNextValue(angle);
+                angleWeights->InsertNextValue(aw);
                 }
             }
-
-        //cout << endl;
         }
-    //of.close();
-    fclose(of);
 
-
-
+    output1->GetFieldData()->AddArray(cellPairingIds);
+    output1->GetFieldData()->AddArray(interplanarAngles);
+    output1->GetFieldData()->AddArray(angleWeights);
 
     return 1;
     }
 
 //----------------------------------------------------------------------------
-void FacetAnalyser::PrintSelf(ostream& os, vtkIndent indent)
-{
-  this->Superclass::PrintSelf(os,indent);
+void FacetAnalyser::PrintSelf(ostream& os, vtkIndent indent){
+    this->Superclass::PrintSelf(os,indent);
 
-  os << indent << "SampleSize: " << this->SampleSize << endl;
-  os << indent << "AngleUncertainty: " << this->AngleUncertainty << endl;
-  os << indent << "MinTrianglesPerFacet: " << this->MinTrianglesPerFacet << endl;
-  os << indent << endl;
-}
+    os << indent << "SampleSize: " << this->SampleSize << endl;
+    os << indent << "AngleUncertainty: " << this->AngleUncertainty << endl;
+    os << indent << "MinTrianglesPerFacet: " << this->MinTrianglesPerFacet << endl;
+    os << indent << endl;
+    }
+
+
+////Cantor pairing function
+////http://de.wikipedia.org/wiki/Cantorsche_Paarungsfunktion#Implementierung_der_Berechnungen_in_Java
+
+vtkIdType FacetAnalyser::CantorPairing(vtkIdType x, vtkIdType y){
+    return (x+y)*(x+y+1)/2 + y;
+    }
+
+// vtkIdType FacetAnalyser::computeX(vtkIdType z){
+//     vtkIdType j  = (vtkIdType) floor(sqrt(0.25 + 2*z) - 0.5);
+//     return j - (z - j*(j+1)/2);
+//     }
+
+// vtkIdType FacetAnalyser::computeY(vtkIdType z){
+//     vtkIdType j  = (vtkIdType) floor(sqrt(0.25 + 2*z) - 0.5);
+//     return z - j*(j+1)/2;
+//     }
