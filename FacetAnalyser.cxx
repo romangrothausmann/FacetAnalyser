@@ -8,7 +8,6 @@
 #include <vtkSmartPointer.h>
 
 #include <vtkMath.h>
-//#include <vtkTriangleFilter.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkMeshQuality.h>
 #include <vtkGaussianSplatter.h>
@@ -35,9 +34,6 @@
 #include <itkStatisticsLabelObject.h>
 #include <itkLabelMap.h>
 #include <itkLabelImageToStatisticsLabelMapFilter.h>
-
-#include <vtkXMLPolyDataWriter.h>
-#include <itkImageFileWriter.h>
 
 #define SMB 1.1 //splatter boundaries: make it bigger than 1 to catch the centres!
 #define msigma 2 //render gauss upto msigma*sigma; 1~68%; 2~95%; 3~99%
@@ -76,13 +72,6 @@ int FacetAnalyser::RequestData(
         outInfo0->Get(vtkDataObject::DATA_OBJECT()));
 
 
-
-
-
-#ifdef verbose
-    cout << "Resulting angular resolution limit: " << atan(2/double(this->SampleSize)) * 180.0 / vtkMath::Pi() << " [deg]" << endl;
-#endif
-
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
     double f= 1/2./sin(da)/sin(da); //sin(da) corresponds to sigma
     double R= msigma / double(SMB) * sqrt(1/2./f);
@@ -102,9 +91,8 @@ int FacetAnalyser::RequestData(
     vtkDataArray *normals= PDnormals0->GetOutput()->GetCellData()->GetNormals();
     vtkDataArray *areas= cellArea->GetOutput()->GetCellData()->GetArray("Quality");
 
+    ////regard normals coords as point coords
     vtkSmartPointer<vtkPoints> Points = vtkSmartPointer<vtkPoints>::New();
-    //Points->SetData(normals);
-
     vtkIdType ndp= normals->GetNumberOfTuples();
     for(vtkIdType i= 0; i < ndp; i++)
         Points->InsertNextPoint(normals->GetTuple3(i));
@@ -112,12 +100,6 @@ int FacetAnalyser::RequestData(
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(Points);
     polydata->GetPointData()->SetScalars(areas);
-
-    vtkSmartPointer<vtkXMLPolyDataWriter> Pwriter = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
- 
-    Pwriter->SetFileName("facet_polydata.vtp");
-    Pwriter->SetInputData(polydata);
-    Pwriter->Update();
 
     vtkSmartPointer<vtkGaussianSplatter> Splatter = vtkSmartPointer<vtkGaussianSplatter>::New();
     Splatter->SetInputData(polydata);
@@ -135,13 +117,13 @@ int FacetAnalyser::RequestData(
     cast->Update(); //seems to be essential for vtk-6.1.0 + itk-4.5.1
 
 
+/////////////////////////////////////////////////
+///////////////// going to ITK //////////////////
+/////////////////////////////////////////////////
 
 
     const int dim = 3;
-//    const int bg = 0;
-//    const int fg = 255;
 
-    //typedef float PixelType;
     typedef double PixelType; //vtk 6.1.0 + itk 4.5.1 seem to use double instead of float
     typedef itk::Image< PixelType, dim >    ImageType;
     typedef ImageType GreyImageType;
@@ -151,17 +133,6 @@ int FacetAnalyser::RequestData(
     ConnectorType::Pointer vtkitkf = ConnectorType::New();
     vtkitkf->SetInput(cast->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf->Update();
-
-#ifdef verbose
-    cout << "vtkitkf Updated!" << endl;
-#endif
-
-    typedef itk::ImageFileWriter<ImageType>  WriterType;
-    WriterType::Pointer writer = WriterType::New();
-    writer->SetFileName("facet_splat1.mha");
-    writer->SetInput(vtkitkf->GetOutput());
-    writer->Update();
-
 
 /////////////////////// creating the sphere mask
 //also outer radius to ensure proper probability interpretation!!!
@@ -178,10 +149,6 @@ int FacetAnalyser::RequestData(
     ss->SetScale(-1); //invert by mul. with -1
     ss->SetInput(vtkitkf->GetOutput());
     ss->Update();
-
-#ifdef verbose
-    cout << "ss Updated!" << endl;
-#endif
 
     typedef unsigned short LabelType;
     typedef itk::Image<LabelType,  dim>   LImageType;
@@ -202,9 +169,6 @@ int FacetAnalyser::RequestData(
     rm->SetFullyConnected(ws1_conn);
     rm->SetInput(hm->GetOutput());
 
-    typedef itk::ImageFileWriter<LImageType>  LWriterType;
-    LWriterType::Pointer l_writer = LWriterType::New();
-
     // connected component labelling
     typedef itk::ConnectedComponentImageFilter<MImageType, LImageType> CCType;
     CCType::Pointer labeller = CCType::New();
@@ -220,10 +184,6 @@ int FacetAnalyser::RequestData(
     ws1->SetMarkerImage(labeller->GetOutput());
     ws1->Update(); //whith out this update label one is lost for facet_holger particle0195!!! Why???
 
-    l_writer->SetFileName("facet_ws1.mha");
-    l_writer->SetInput(ws1->GetOutput());
-    l_writer->Update();
-
     // extract the watershed lines and combine with the orginal markers
     typedef itk::BinaryThresholdImageFilter<LImageType, LImageType> ThreshType;
     ThreshType::Pointer th = ThreshType::New();
@@ -233,28 +193,16 @@ int FacetAnalyser::RequestData(
     th->SetInsideValue(labeller->GetObjectCount() + 1);
     th->SetInput(ws1->GetOutput());
 
-//     l_writer->SetFileName("facet_th.tif");
-//     l_writer->SetInput(th->GetOutput());
-//     l_writer->Update();
-
     // Add the marker image to the watershed line image
     typedef itk::AddImageFilter<LImageType, LImageType, LImageType> AddType;
     AddType::Pointer adder1= AddType::New();
     adder1->SetInput1(th->GetOutput());
     adder1->SetInput2(labeller->GetOutput());
 
-//     l_writer->SetFileName("facet_ws+bg.tif");
-//     l_writer->SetInput(adder->GetOutput());
-//     l_writer->Update();
-
     // compute a gradient
     typedef itk::GradientMagnitudeImageFilter<GreyImageType, GreyImageType> GMType;
     GMType::Pointer gm1= GMType::New();
     gm1->SetInput(ss->GetOutput());
-
-//    g_writer->SetFileName("facet_gm.mhd");
-//    g_writer->SetInput(gm1->GetOutput());
-//    g_writer->Update();
 
     // Now apply sd. watershed
     MWatershedType::Pointer ws2 = MWatershedType::New();
@@ -263,10 +211,6 @@ int FacetAnalyser::RequestData(
     //ws->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws2->SetInput(gm1->GetOutput());
     ws2->SetMarkerImage(adder1->GetOutput());
-
-    l_writer->SetFileName("facet_ws2.mha");
-    l_writer->SetInput(ws2->GetOutput());
-    l_writer->Update();
 
     // delete the background label
     typedef itk::ChangeLabelImageFilter<LImageType, LImageType> ChangeLabType;
@@ -288,10 +232,6 @@ int FacetAnalyser::RequestData(
     ws3->SetInput(gm2->GetOutput());
     ws3->SetMarkerImage(adder2->GetOutput());
     ws3->SetMarkWatershedLine(false);			
-
-    l_writer->SetFileName("facet_ws3.mha");
-    l_writer->SetInput(ws2->GetOutput());
-    l_writer->Update();
 
     // delete the background label again
     ChangeLabType::Pointer ch2= ChangeLabType::New();
@@ -322,52 +262,21 @@ int FacetAnalyser::RequestData(
     cast2->SetOutputScalarTypeToDouble();
     cast2->Update(); //seems to be essential for vtk-6.1.0 + itk-4.5.1
 
-#ifdef verbose
-    cout << "cast updated!" << endl;
-#endif
-
     ConnectorType::Pointer vtkitkf2 = ConnectorType::New();
     vtkitkf2->SetInput(cast2->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf2->Update();
-
-#ifdef verbose
-    cout << "vtkitkf2 Updated!" << endl;
-#endif
-
-//     stats->SetInput(vtkitkf2->GetOutput());
-//     stats->Update();
-
-//     cout << "mean: " << stats->GetMean()
-//          << " std: " << stats->GetSigma()
-//          << " var: " << stats->GetVariance()
-//          << " sum: " << stats->GetSum()
-//          << " max: " << stats->GetMaximum()
-//          << " min: " << stats->GetMinimum()
-//          <<  endl;
-
-//     g_writer->SetFileName("facet_sp.mhd");
-//     g_writer->SetInput(vtkitkf2->GetOutput());
-//     g_writer->Update();
-
 
     typedef itk::MaskImageFilter<LImageType, GreyImageType, LImageType> MaskType2;
     MaskType2::Pointer mask2 = MaskType2::New();
     mask2->SetInput1(ch2->GetOutput());
     mask2->SetInput2(vtkitkf2->GetOutput()); //mask
 
-    l_writer->SetFileName("facet_ws_m.mha");
-    l_writer->SetInput(mask2->GetOutput());
-    l_writer->Update();
-
-
     typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
     typedef itk::LabelMap< LabelObjectType > LabelMapType;
 
-    //typedef itk::BinaryImageToStatisticsLabelMapFilter<OutputImageType, GreyImageType, LabelMapType > ConverterType;
     typedef itk::LabelImageToStatisticsLabelMapFilter<LImageType, GreyImageType, LabelMapType> ConverterType;
     ConverterType::Pointer converter = ConverterType::New();
     converter->SetInput(mask2->GetOutput());
-    //converter->SetFeatureImage(mask->GetOutput());
     converter->SetFeatureImage(vtkitkf2->GetOutput()); //this should be the single splat grey image to be exact!
     //converter->SetFullyConnected(true); //true: 26-connectivity; false: 6-connectivity
     converter->SetComputePerimeter(false);
@@ -421,11 +330,6 @@ The inverse of the length of the centre vector is therefor a measure of how conc
         }
     fclose(off);
 
-#ifdef verbose
-    if (tfw != 1)
-        cout << "Total rel. facet size: " << tfw << endl; 
-#endif
-       
     //unsigned int nfp= fpoints->GetNumberOfPoints();
     vtkIdType nfp= fpoints->GetNumberOfPoints();
 
@@ -437,11 +341,6 @@ The inverse of the length of the centre vector is therefor a measure of how conc
     fprintf(of, "#i1\ti2\tp0_x\tp0_y\tp0_z\tp1_x\tp1_y\tp1_z\tangle\ta_weight\n");
 
     if(nfp > 1){
-
-#ifdef verbose
-        std::cout << nfp << " centres found!" << std::endl;
-        cout << "Computing " << nfp*(nfp-1)/2 << " angles... " << endl;        
-#endif
 
         double angle, aw;
         double p0[3], p1[3];
@@ -484,9 +383,6 @@ The inverse of the length of the centre vector is therefor a measure of how conc
     LImageType::IndexType lidx;
     //nt= polydata->GetPointData()->GetNumberOfPoints();
     nt= tps->GetNumberOfPoints();
-#ifdef verbose
-    cout << "# of triangles: " << nt << endl;
-#endif
 
     FILE *tf;
     tf= fopen ((fn + ".tdat").data(),"w");
@@ -497,11 +393,9 @@ The inverse of the length of the centre vector is therefor a measure of how conc
     fId->SetName("FacetIds");
     fId->SetNumberOfComponents(1);
 
-
     vtkSmartPointer<vtkDoubleArray> fPb= vtkSmartPointer<vtkDoubleArray>::New();
     fPb->SetName("FacetProbabilities");
     fPb->SetNumberOfComponents(1);
-
 
     LabelType tl;
     double pp[3], tv;
@@ -528,15 +422,14 @@ The inverse of the length of the centre vector is therefor a measure of how conc
         }
     fclose(tf);
 
-
-
-
     // Copy original points and point data
     output->CopyStructure( input );
     output->GetPointData()->PassData(input->GetPointData());
     output->GetCellData()->PassData(input->GetCellData());
     output->GetCellData()->AddArray(fId);
     output->GetCellData()->AddArray(fPb);
+
+
 
     return 1;
     }
