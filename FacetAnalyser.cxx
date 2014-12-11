@@ -20,6 +20,8 @@
 #include <vtkDoubleArray.h>
 #include <vtkPlanes.h>
 #include <vtkHull.h>
+#include <vtkCleanPolyData.h>
+#include <vtkCellArray.h>
 
 #include <itkVTKImageToImageFilter.h>
 #include <itkShiftScaleImageFilter.h>
@@ -46,7 +48,7 @@ vtkStandardNewMacro(FacetAnalyser);
 //----------------------------------------------------------------------------
 // Description:
 FacetAnalyser::FacetAnalyser(){
-    this->SetNumberOfOutputPorts(2);
+    this->SetNumberOfOutputPorts(3);
 
     this->SampleSize= 101;
     this->AngleUncertainty= 10;
@@ -62,9 +64,9 @@ int FacetAnalyser::RequestData(
     {
     // get the info objects
     vtkInformation *inInfo0 = inputVector[0]->GetInformationObject(0);
-    //vtkInformation *inInfo1 = inputVector[0]->GetInformationObject(1);
     vtkInformation *outInfo0 = outputVector->GetInformationObject(0);
     vtkInformation *outInfo1 = outputVector->GetInformationObject(1);
+    vtkInformation *outInfo2 = outputVector->GetInformationObject(2);
 
     // get the input and ouptut
     vtkPolyData *input = vtkPolyData::SafeDownCast(
@@ -73,6 +75,8 @@ int FacetAnalyser::RequestData(
         outInfo0->Get(vtkDataObject::DATA_OBJECT()));
     vtkPolyData *output1 = vtkPolyData::SafeDownCast(
         outInfo1->Get(vtkDataObject::DATA_OBJECT()));
+    vtkPolyData *output2 = vtkPolyData::SafeDownCast(
+        outInfo2->Get(vtkDataObject::DATA_OBJECT()));
 
 
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
@@ -399,7 +403,13 @@ int FacetAnalyser::RequestData(
     //hull->GenerateHull(polydata1, -20, 20, -20, 20, -20, 20)
     hull->Update();
 
-    output1->ShallowCopy(hull->GetOutput());
+    vtkSmartPointer<vtkCleanPolyData> cleanFilter= vtkSmartPointer<vtkCleanPolyData>::New();
+    cleanFilter->SetInputConnection(hull->GetOutputPort());
+    cleanFilter->PointMergingOn();//this is why it's done
+    cleanFilter->ConvertPolysToLinesOff();//keep degenerate polys!
+    cleanFilter->Update();
+
+    output1->ShallowCopy(cleanFilter->GetOutput());
     output1->GetCellData()->SetNormals(facetNormals);
     output1->GetCellData()->AddArray(relFacetSizes);
     output1->GetCellData()->AddArray(absFacetSizes);
@@ -419,7 +429,25 @@ int FacetAnalyser::RequestData(
     angleWeights->SetNumberOfComponents(1);
     angleWeights->SetName ("angleWeights");
 
+
+    /////////////additionaly, create third output with cell data/////////////
+
+    vtkSmartPointer<vtkCellArray> lines= vtkSmartPointer<vtkCellArray>::New();
+
+    vtkSmartPointer<vtkIdTypeArray> lcellPairingIds= vtkSmartPointer<vtkIdTypeArray>::New();
+    lcellPairingIds->SetNumberOfComponents(1);
+    lcellPairingIds->SetName ("cellPairingIds");
+
+    vtkSmartPointer<vtkDoubleArray> linterplanarAngles= vtkSmartPointer<vtkDoubleArray>::New();
+    linterplanarAngles->SetNumberOfComponents(1);
+    linterplanarAngles->SetName ("interplanarAngles");
+
+    vtkSmartPointer<vtkDoubleArray> langleWeights= vtkSmartPointer<vtkDoubleArray>::New();
+    langleWeights->SetNumberOfComponents(1);
+    langleWeights->SetName ("angleWeights");
+
     if(NumFacets > 1){
+        output1->BuildCells();
         for(vtkIdType u= 0; u < NumFacets - 1 ; u++){
             for(vtkIdType v= u + 1; v < NumFacets; v++){
                 double p0[3], p1[3];
@@ -430,9 +458,29 @@ int FacetAnalyser::RequestData(
                 double angle= acos(vtkMath::Dot(p0, p1)) * 180.0 / vtkMath::Pi();
                 double aw= 2 / (1/relFacetSizes->GetTuple1(u) + 1/relFacetSizes->GetTuple1(v)); 
  
-                cellPairingIds->InsertNextValue(CantorPairing(u,v));
+                cellPairingIds->InsertNextValue(CantorPairing(u+1,v+1));//for consistency: label 0 is for unfacetted regions in output0
                 interplanarAngles->InsertNextValue(angle);
                 angleWeights->InsertNextValue(aw);
+
+                vtkIdType *pts0, *pts1;
+                vtkIdType npts0, npts1, nosc;
+                output1->GetCellPoints(u,npts0,pts0);
+                output1->GetCellPoints(v,npts1,pts1);
+                vtkSmartPointer<vtkIdList> idlst= vtkSmartPointer<vtkIdList>::New();
+                if((nosc= findSharedPoints(pts0, pts1, npts0, npts1, idlst)) == 2){
+                    //vtkSmartPointer<vtkLine> line= vtkSmartPointer<vtkLine>::New();
+                    lines->InsertNextCell(2);
+                    lines->InsertCellPoint(idlst->GetId(0));
+                    lines->InsertCellPoint(idlst->GetId(1));
+
+                    lcellPairingIds->InsertNextValue(CantorPairing(u+1,v+1));//for consistency: label 0 is for unfacetted regions in output0
+                    linterplanarAngles->InsertNextValue(angle);
+                    langleWeights->InsertNextValue(aw);
+                    }
+                else if(nosc>2){
+                    vtkErrorMacro(<< "Adjacent cells share more than one edge. This is not handled! " << u << "; " << v << "; " << "; " << npts0 << "; " << npts1 << "; " << nosc);
+                    //return VTK_ERROR; //not needed, mesh will just lack some lines
+                    }
                 }
             }
         }
@@ -440,6 +488,13 @@ int FacetAnalyser::RequestData(
     output1->GetFieldData()->AddArray(cellPairingIds);
     output1->GetFieldData()->AddArray(interplanarAngles);
     output1->GetFieldData()->AddArray(angleWeights);
+
+    output2->SetPoints(output1->GetPoints());
+    output2->SetLines(lines);
+ 
+    output2->GetCellData()->AddArray(lcellPairingIds);
+    output2->GetCellData()->AddArray(linterplanarAngles);
+    output2->GetCellData()->AddArray(langleWeights);
 
     return 1;
     }
@@ -471,3 +526,13 @@ vtkIdType FacetAnalyser::CantorPairing(vtkIdType x, vtkIdType y){
 //     vtkIdType j  = (vtkIdType) floor(sqrt(0.25 + 2*z) - 0.5);
 //     return z - j*(j+1)/2;
 //     }
+
+
+vtkIdType FacetAnalyser::findSharedPoints(vtkIdType* pts0, vtkIdType* pts1, vtkIdType npts0, vtkIdType npts1, vtkIdList* ptIds){
+    
+    for (vtkIdType i= 0; i<npts0; i++)
+        for (vtkIdType j= 0; j<npts1; j++)
+            if(pts0[i] == pts1[j])
+                ptIds->InsertNextId(pts0[i]);
+    return(ptIds->GetNumberOfIds());
+    }

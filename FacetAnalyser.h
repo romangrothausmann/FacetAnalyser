@@ -44,6 +44,8 @@ private:
   // vtkIdType computeX(vtkIdType z);
   // vtkIdType computeY(vtkIdType z);
 
+  vtkIdType findSharedPoints(vtkIdType* pts0, vtkIdType* pts1, vtkIdType npts0, vtkIdType npts1, vtkIdList* ptIds);
+
 };
 
 #endif
