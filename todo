@@ -1,0 +1,11 @@
+
+
+todo:
+
+- convert CLI to PV-plugin
+- create a polyhedron and assign fdat and adat 
+-- use vtkPlanes + vtkHull
+--- vtkHull either with orig mesh as input (no bounds to spec.) or
+--- vtkHull GenerateHull()
+
+

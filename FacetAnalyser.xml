@@ -1,0 +1,53 @@
+<ServerManagerConfiguration>
+  
+  <ProxyGroup name="filters">
+    <SourceProxy name="FacetAnalyser"
+                 class="FacetAnalyser"
+                 label="Facet Analyser">
+      
+      <InputProperty command="SetInputConnection" name="Input">
+        <DataTypeDomain name="input_type">
+          <DataType value="vtkPolyData" />
+        </DataTypeDomain>
+        <Documentation>This property specifies the input poly-data.
+        </Documentation>
+      </InputProperty>
+      
+      
+      <IntVectorProperty name="SampleSize"
+                         command="SetSampleSize"
+                         number_of_elements="1"
+                         default_values="101">
+        <IntRangeDomain name="range" />
+        <Documentation>Sampling volume size.</Documentation>
+      </IntVectorProperty>
+      
+      <DoubleVectorProperty name="AngleUncertainty"
+                            command="SetAngleUncertainty"
+                            number_of_elements="1"
+                            default_values="10">
+        <DoubleRangeDomain name="range" />
+        <Documentation>Angle uncetainty.</Documentation>
+      </DoubleVectorProperty>
+
+      <DoubleVectorProperty name="MinTrianglesPerFacet"
+                            command="SetMinTrianglesPerFacet"
+                            number_of_elements="1"
+                            default_values="10">
+        <DoubleRangeDomain name="range" />
+        <Documentation>Angle uncetainty.</Documentation>
+      </DoubleVectorProperty>
+
+      <!-- <IntVectorProperty name="MinTrianglesPerFacet" -->
+      <!--                    command="SetMinTrianglesPerFacet" -->
+      <!--                    number_of_elements="1" -->
+      <!--                    default_values="10"> -->
+      <!--   <IntRangeDomain name="range" /> -->
+      <!--   <Documentation>Minimum number of triangles per facet.</Documentation> -->
+      <!-- </IntVectorProperty> -->
+      
+    </SourceProxy>
+    
+  </ProxyGroup>
+  
+</ServerManagerConfiguration>
