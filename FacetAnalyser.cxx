@@ -414,6 +414,11 @@ int FacetAnalyser::RequestData(
     output1->GetCellData()->AddArray(relFacetSizes);
     output1->GetCellData()->AddArray(absFacetSizes);
 
+    ////some of the planes set as input for vtkHull can get lost
+    ////so set face-analyses also as FieldData to output0
+    output0->GetFieldData()->AddArray(facetNormals);
+    output0->GetFieldData()->AddArray(relFacetSizes);
+    output0->GetFieldData()->AddArray(absFacetSizes);
 
     /////////////create second output field data/////////////
     
@@ -488,6 +493,12 @@ int FacetAnalyser::RequestData(
     output1->GetFieldData()->AddArray(cellPairingIds);
     output1->GetFieldData()->AddArray(interplanarAngles);
     output1->GetFieldData()->AddArray(angleWeights);
+
+    ////as output0 already containds fdat as FieldData also add adat
+    ////so output0 contains complete analyses
+    output0->GetFieldData()->AddArray(cellPairingIds);
+    output0->GetFieldData()->AddArray(interplanarAngles);
+    output0->GetFieldData()->AddArray(angleWeights);
 
     output2->SetPoints(output1->GetPoints());
     output2->SetLines(lines);
