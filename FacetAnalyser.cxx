@@ -286,6 +286,21 @@ int FacetAnalyser::RequestData(
     mask2->SetInput2(vtkitkf2->GetOutput()); //mask
     mask2->Update();
 
+    typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
+    typedef itk::LabelMap< LabelObjectType > LabelMapType;
+    typedef itk::LabelImageToStatisticsLabelMapFilter<LImageType, GreyImageType, LabelMapType> ConverterType;
+    ConverterType::Pointer converter = ConverterType::New();
+    converter->SetInput(mask2->GetOutput());
+    converter->SetFeatureImage(vtkitkf2->GetOutput()); //this should be the single splat grey image to be exact!
+    //converter->SetFullyConnected(true); //true: 26-connectivity; false: 6-connectivity
+    converter->SetComputePerimeter(false);
+    converter->Update();
+
+    LabelMapType::Pointer labelMap = converter->GetOutput();
+    vtkIdType NumFacets= labelMap->GetNumberOfLabelObjects();//needed later on
+
+    /////////////ITK work done/////////////
+
 
     /////////////create first output/////////////
 
@@ -350,20 +365,6 @@ int FacetAnalyser::RequestData(
     absFacetSizes->SetName ("absFacetSize");
 
     vtkSmartPointer<vtkPoints> facetNormalPoints = vtkSmartPointer<vtkPoints>::New();
-    typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
-    typedef itk::LabelMap< LabelObjectType > LabelMapType;
-
-    typedef itk::LabelImageToStatisticsLabelMapFilter<LImageType, GreyImageType, LabelMapType> ConverterType;
-    ConverterType::Pointer converter = ConverterType::New();
-    converter->SetInput(mask2->GetOutput());
-    converter->SetFeatureImage(vtkitkf2->GetOutput()); //this should be the single splat grey image to be exact!
-    //converter->SetFullyConnected(true); //true: 26-connectivity; false: 6-connectivity
-    converter->SetComputePerimeter(false);
-    converter->Update();
-
-    LabelMapType::Pointer labelMap = converter->GetOutput();
-    vtkIdType NumFacets= labelMap->GetNumberOfLabelObjects();
-
     for(unsigned int label= 1; label <= NumFacets; label++){//skipping bg label 0, ie the "unfacetted" regions
         const LabelObjectType* labelObject;
         try{
@@ -400,7 +401,7 @@ int FacetAnalyser::RequestData(
     vtkSmartPointer<vtkHull> hull= vtkSmartPointer<vtkHull>::New();
     hull->SetPlanes(planes);
     hull->SetInputData(input);
-    //hull->GenerateHull(polydata1, -20, 20, -20, 20, -20, 20)
+    //hull->GenerateHull(polydata1, input->GetBounds());
     hull->Update();
 
     vtkSmartPointer<vtkCleanPolyData> cleanFilter= vtkSmartPointer<vtkCleanPolyData>::New();
