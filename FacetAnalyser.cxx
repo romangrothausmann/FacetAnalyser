@@ -18,6 +18,7 @@
 #include <vtkIdTypeArray.h>
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
+#include <vtkCellCenters.h>
 #include <vtkPlanes.h>
 #include <vtkHull.h>
 #include <vtkCleanPolyData.h>
@@ -315,6 +316,16 @@ int FacetAnalyser::RequestData(
     fPb->SetName("FacetProbabilities");
     fPb->SetNumberOfComponents(1);
 
+    vtkSmartPointer<vtkPoints> facetNormalPoints= vtkSmartPointer<vtkPoints>::New();
+    facetNormalPoints->SetNumberOfPoints(NumFacets);
+
+    vtkSmartPointer<vtkIdTypeArray> facetNormalPointsCounter= vtkSmartPointer<vtkIdTypeArray>::New();
+    facetNormalPointsCounter->SetNumberOfTuples(NumFacets);
+
+    vtkSmartPointer<vtkCellCenters> cellCenters= vtkSmartPointer<vtkCellCenters>::New();
+    cellCenters->SetInputData(input);
+    cellCenters->Update(); //The cell attributes will be associated with the points on output.
+
     for(vtkIdType k= 0; k < NumPolyDataPoints; k++){
         double pp[3];
         Points->GetPoint(k, pp); 
@@ -339,7 +350,18 @@ int FacetAnalyser::RequestData(
 
         fId->InsertNextValue(tl);
         fPb->InsertNextValue(tv);
+
+        if(tl > 0){
+            double cp[3], fp[3];
+            cellCenters->GetOutput()->GetPoint(k, cp);
+            facetNormalPoints->GetPoint(tl, fp);
+            facetNormalPoints->SetPoint(tl, fp[0]+cp[0], fp[1]+cp[1], fp[2]+cp[2]);
+            facetNormalPointsCounter->SetValue(tl, facetNormalPointsCounter->GetValue(tl)+1);//facetNormalPointsCounter[k]++;
+            }
         }
+
+    //vtkPrintVectorFormat(cerr, facetNormalPointsCounter);
+    std::cerr << "facetNormalPointsCounter created" << std::endl;
 
     // Copy original points and point data
     output0->CopyStructure(input);
@@ -364,7 +386,6 @@ int FacetAnalyser::RequestData(
     absFacetSizes->SetNumberOfComponents(1);
     absFacetSizes->SetName ("absFacetSize");
 
-    vtkSmartPointer<vtkPoints> facetNormalPoints = vtkSmartPointer<vtkPoints>::New();
     for(unsigned int label= 1; label <= NumFacets; label++){//skipping bg label 0, ie the "unfacetted" regions
         const LabelObjectType* labelObject;
         try{
@@ -387,7 +408,10 @@ int FacetAnalyser::RequestData(
         facetNormals->InsertNextTuple(c);
         relFacetSizes->InsertNextValue(fw);
         absFacetSizes->InsertNextValue(fw * totalPolyDataArea);
-        facetNormalPoints->InsertNextPoint(0,0,0);
+
+        double fp[3];
+        facetNormalPoints->GetPoint(label-1, fp);
+        facetNormalPoints->SetPoint(label-1, fp[0]/facetNormalPointsCounter->GetValue(label-1), fp[1]/facetNormalPointsCounter->GetValue(label-1), fp[2]/facetNormalPointsCounter->GetValue(label-1));
         }
 
 
@@ -397,15 +421,16 @@ int FacetAnalyser::RequestData(
     planes->SetPoints(facetNormalPoints);
     planes->SetNormals(facetNormals);
 
-    //vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
+    vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
     vtkSmartPointer<vtkHull> hull= vtkSmartPointer<vtkHull>::New();
     hull->SetPlanes(planes);
-    hull->SetInputData(input);
-    //hull->GenerateHull(polydata1, input->GetBounds());
-    hull->Update();
+    //hull->SetInputData(input);
+    hull->GenerateHull(polydata1, input->GetBounds());//replaced SetInputData and Update
+    //hull->Update();
 
     vtkSmartPointer<vtkCleanPolyData> cleanFilter= vtkSmartPointer<vtkCleanPolyData>::New();
-    cleanFilter->SetInputConnection(hull->GetOutputPort());
+    //cleanFilter->SetInputConnection(hull->GetOutputPort());
+    cleanFilter->SetInputData(polydata1);
     cleanFilter->PointMergingOn();//this is why it's done
     cleanFilter->ConvertPolysToLinesOff();//keep degenerate polys!
     cleanFilter->Update();
