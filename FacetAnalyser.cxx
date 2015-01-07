@@ -57,6 +57,7 @@ FacetAnalyser::FacetAnalyser(){
 
     this->SampleSize= 101;
     this->AngleUncertainty= 10;
+    this->SplatRadius= 0;
     this->MinTrianglesPerFacet= 10;
     }
 
@@ -113,7 +114,12 @@ int FacetAnalyser::RequestData(
 
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
     double f= 1/2./sin(da)/sin(da); //sin(da) corresponds to sigma
-    double R= msigma / double(SMB) * sqrt(1/2./f);
+
+    double R;
+    if(this->SplatRadius)
+	R= this->SplatRadius;
+    else
+	R= msigma / double(SMB) * sqrt(1/2./f);
 
     vtkSmartPointer<vtkPolyDataNormals> PDnormals0= vtkSmartPointer<vtkPolyDataNormals>::New();
     PDnormals0->SetInputData(input);
@@ -183,7 +189,6 @@ int FacetAnalyser::RequestData(
 
 
     typedef itk::VTKImageToImageFilter<ImageType> ConnectorType;
-
     ConnectorType::Pointer vtkitkf = ConnectorType::New();
     vtkitkf->SetInput(cast->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf->Update();
@@ -368,7 +373,7 @@ int FacetAnalyser::RequestData(
         vtkIdType idx= ProbePoint(Splatter->GetOutput()->GetOrigin(), Splatter->GetOutput()->GetSpacing(), Splatter->GetSampleDimensions(), pp, pi);
 
         if (idx < 0){
-            vtkErrorMacro(<< "Prope Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
+            vtkErrorMacro(<< "Probe Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
             return VTK_ERROR;
             }
 

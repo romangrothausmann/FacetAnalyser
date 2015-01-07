@@ -22,8 +22,8 @@ public:
   vtkGetMacro(SampleSize, unsigned int);
   vtkSetMacro(AngleUncertainty, double);
   vtkGetMacro(AngleUncertainty, double);
-  /* vtkSetMacro(MinTrianglesPerFacet, unsigned int); */
-  /* vtkGetMacro(MinTrianglesPerFacet, unsigned int); */
+  vtkSetMacro(SplatRadius, double);
+  vtkGetMacro(SplatRadius, double);
   vtkSetMacro(MinTrianglesPerFacet, double);
   vtkGetMacro(MinTrianglesPerFacet, double);
 
@@ -34,7 +34,7 @@ protected:
   int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
   unsigned int SampleSize, MinTrianglesPerFacet;
-  double AngleUncertainty;
+  double AngleUncertainty, SplatRadius;
 
 private:
   FacetAnalyser(const FacetAnalyser&);  // Not implemented.

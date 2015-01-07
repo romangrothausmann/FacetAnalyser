@@ -30,6 +30,14 @@
         <Documentation>Angle uncetainty.</Documentation>
       </DoubleVectorProperty>
 
+      <DoubleVectorProperty name="SplatRadius"
+                            command="SetSplatRadius"
+                            number_of_elements="1"
+                            default_values="0.2">
+        <DoubleRangeDomain name="range" min="0.0" max="1.0"/>
+        <Documentation>SplatRadius, in percent of SampleSize, if set to 0 calculated relative to AngleUncertainty</Documentation>
+      </DoubleVectorProperty>
+
       <DoubleVectorProperty name="MinTrianglesPerFacet"
                             command="SetMinTrianglesPerFacet"
                             number_of_elements="1"
