@@ -45,6 +45,7 @@ private:
   // vtkIdType computeY(vtkIdType z);
 
   vtkIdType findSharedPoints(vtkIdType* pts0, vtkIdType* pts1, vtkIdType npts0, vtkIdType npts1, vtkIdList* ptIds);
+  vtkIdType ProbePoint(const double Origin[3], const double Spacing[3], const int SampleDimensions[3], const double *pp, vtkIdType *pi);
 
 };
 

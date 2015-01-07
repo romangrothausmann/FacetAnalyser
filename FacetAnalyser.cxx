@@ -261,8 +261,8 @@ int FacetAnalyser::RequestData(
     Splatter2->SetInputData(polydata0);
     Splatter2->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter2->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
-    Splatter2->SetExponentFactor(-1); //GaussianSplat decay value
-    Splatter2->SetRadius(0); //only splat single points
+    Splatter2->SetRadius(1.0/(this->SampleSize+1)); //only splat single points (nearly, as a value of 0 does not work correctly)
+    Splatter2->SetExponentFactor(0); //no decay
     Splatter2->SetAccumulationModeToSum();
     Splatter2->ScalarWarpingOn(); //use individual weights
     Splatter2->SetScaleFactor(1/totalPolyDataArea);
@@ -319,7 +319,7 @@ int FacetAnalyser::RequestData(
         double pp[3];
         Points->GetPoint(k, pp); 
         vtkIdType pi[3];
-        vtkIdType idx= Splatter->ProbePoint(pp, pi);
+        vtkIdType idx= ProbePoint(Splatter->GetOutput()->GetOrigin(), Splatter->GetOutput()->GetSpacing(), Splatter->GetSampleDimensions(), pp, pi);
 
         if (idx < 0){
             vtkErrorMacro(<< "Prope Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
@@ -547,4 +547,24 @@ vtkIdType FacetAnalyser::findSharedPoints(vtkIdType* pts0, vtkIdType* pts1, vtkI
             if(pts0[i] == pts1[j])
                 ptIds->InsertNextId(pts0[i]);
     return(ptIds->GetNumberOfIds());
+    }
+
+vtkIdType FacetAnalyser::ProbePoint(const double Origin[3], const double Spacing[3], const int SampleDimensions[3], const double *pp, vtkIdType *pi){
+    int i;
+    double x[3];
+
+    // Determine the voxel that the point is in
+    for (i=0; i<3; i++)
+        {
+        x[i] = round((pp[i] - Origin[i]) / Spacing[i]); //round(), int(), ceil() or floor()???
+        //cout << x[i] << endl;
+        //check if point is inside output data
+        if ( x[i] < 0 || x[i] >= SampleDimensions[i] )
+            {
+            return(-1);
+            }
+        pi[i]= x[i];
+        }
+
+    return(x[0] + x[1]*SampleDimensions[0] + x[2]*SampleDimensions[0]*SampleDimensions[1]);
     }
