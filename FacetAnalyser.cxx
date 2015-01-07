@@ -7,6 +7,9 @@
 
 #include <vtkSmartPointer.h>
 
+#include <vtkCallbackCommand.h>
+#include <vtkCommand.h>
+
 #include <vtkMath.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkMeshQuality.h>
@@ -22,6 +25,8 @@
 #include <vtkHull.h>
 #include <vtkCleanPolyData.h>
 #include <vtkCellArray.h>
+
+#include <itkCommand.h>
 
 #include <itkVTKImageToImageFilter.h>
 #include <itkShiftScaleImageFilter.h>
@@ -56,7 +61,31 @@ FacetAnalyser::FacetAnalyser(){
     }
 
 //----------------------------------------------------------------------------
+void FilterEventHandlerVTK(vtkObject* caller, long unsigned int eventId, void* clientData, void* callData){
 
+    vtkAlgorithm *filter= static_cast<vtkAlgorithm*>(caller);
+
+    switch(eventId){
+	case vtkCommand::ProgressEvent:
+	    fprintf(stderr, "\r%s progress: %5.1f%%", filter->GetClassName(), 100.0 * filter->GetProgress());//stderr is flushed directly
+	    break;
+	case vtkCommand::EndEvent:
+	    std::cerr << std::endl << std::flush;   
+	    break;
+	}
+    }
+
+void FilterEventHandlerITK(itk::Object *caller, const itk::EventObject &event, void*){
+
+    const itk::ProcessObject* filter = static_cast<const itk::ProcessObject*>(caller);
+
+    if(itk::ProgressEvent().CheckEvent(&event))
+	fprintf(stderr, "\r%s progress: %5.1f%%", filter->GetNameOfClass(), 100.0 * filter->GetProgress());//stderr is flushed directly
+    else if(itk::EndEvent().CheckEvent(&event))
+	std::cerr << std::endl << std::flush;   
+    }
+
+//----------------------------------------------------------------------------
 int FacetAnalyser::RequestData(
     vtkInformation *vtkNotUsed(request),
     vtkInformationVector **inputVector,
@@ -77,6 +106,9 @@ int FacetAnalyser::RequestData(
         outInfo1->Get(vtkDataObject::DATA_OBJECT()));
     vtkPolyData *output2 = vtkPolyData::SafeDownCast(
         outInfo2->Get(vtkDataObject::DATA_OBJECT()));
+
+    vtkSmartPointer<vtkCallbackCommand> eventCallbackVTK = vtkSmartPointer<vtkCallbackCommand>::New();
+    eventCallbackVTK->SetCallback(FilterEventHandlerVTK);
 
 
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
@@ -124,6 +156,8 @@ int FacetAnalyser::RequestData(
     Splatter->ScalarWarpingOn(); //use individual weights
     Splatter->SetScaleFactor(1/totalPolyDataArea);
     Splatter->CappingOff(); //don't pad with 0
+    Splatter->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
+    Splatter->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     Splatter->Update();
  
     vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
@@ -142,6 +176,11 @@ int FacetAnalyser::RequestData(
     typedef double PixelType; //vtk 6.1.0 + itk 4.5.1 seem to use double instead of float
     typedef itk::Image< PixelType, dim >    ImageType;
     typedef ImageType GreyImageType;
+
+    itk::CStyleCommand::Pointer eventCallbackITK;
+    eventCallbackITK = itk::CStyleCommand::New();
+    eventCallbackITK->SetCallback(FilterEventHandlerITK);
+
 
     typedef itk::VTKImageToImageFilter<ImageType> ConnectorType;
 
@@ -197,6 +236,8 @@ int FacetAnalyser::RequestData(
     //ws1->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws1->SetInput(ss->GetOutput());
     ws1->SetMarkerImage(labeller->GetOutput());
+    ws1->AddObserver(itk::ProgressEvent(), eventCallbackITK);
+    ws1->AddObserver(itk::EndEvent(), eventCallbackITK);
     ws1->Update(); //whith out this update label one is lost for facet_holger particle0195!!! Why???
 
     // extract the watershed lines and combine with the orginal markers
@@ -226,6 +267,9 @@ int FacetAnalyser::RequestData(
     //ws->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws2->SetInput(gm1->GetOutput());
     ws2->SetMarkerImage(adder1->GetOutput());
+    ws2->AddObserver(itk::ProgressEvent(), eventCallbackITK);
+    ws2->AddObserver(itk::EndEvent(), eventCallbackITK);
+    ws2->Update();
 
     // delete the background label
     typedef itk::ChangeLabelImageFilter<LImageType, LImageType> ChangeLabType;
@@ -267,6 +311,8 @@ int FacetAnalyser::RequestData(
     Splatter2->ScalarWarpingOn(); //use individual weights
     Splatter2->SetScaleFactor(1/totalPolyDataArea);
     Splatter2->CappingOff(); //don't pad with 0
+    Splatter2->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
+    Splatter2->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     Splatter2->Update();
 
     vtkImageCast* cast2 = vtkImageCast::New();
