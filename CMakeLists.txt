@@ -30,7 +30,7 @@ IF(BUILD_TESTING)
 ## build test programs
 SET(CurrentExe "TestFacetAnalyser")
 ADD_EXECUTABLE(${CurrentExe}
-  FacetAnalyser.cxx 
+  FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
   TestFacetAnalyser.cxx)
 TARGET_LINK_LIBRARIES(${CurrentExe} ${ITK_LIBRARIES})
 
@@ -48,7 +48,7 @@ IF(BUILD_PLUGIN)
 
 # Use the PLUGIN macro to create a plugin.
 ADD_PARAVIEW_PLUGIN(FacetAnalyser "1.0"
-   SERVER_MANAGER_SOURCES FacetAnalyser.cxx
+   SERVER_MANAGER_SOURCES FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
    SERVER_MANAGER_XML FacetAnalyser.xml)
 
 TARGET_LINK_LIBRARIES(FacetAnalyser ${ITK_LIBRARIES})

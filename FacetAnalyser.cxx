@@ -13,7 +13,7 @@
 #include <vtkMath.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkMeshQuality.h>
-#include <vtkGaussianSplatter.h>
+#include "vtkGaussianSplatterExtended.h"
 #include <vtkImageCast.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
@@ -152,7 +152,7 @@ int FacetAnalyser::RequestData(
     polydata0->SetPoints(Points);
     polydata0->GetPointData()->SetScalars(areas);
 
-    vtkSmartPointer<vtkGaussianSplatter> Splatter = vtkSmartPointer<vtkGaussianSplatter>::New();
+    vtkSmartPointer<vtkGaussianSplatterExtended> Splatter = vtkSmartPointer<vtkGaussianSplatterExtended>::New();
     Splatter->SetInputData(polydata0);
     Splatter->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
@@ -296,11 +296,12 @@ int FacetAnalyser::RequestData(
 
 
     ////spalter only single points with weights    
-    vtkGaussianSplatter *Splatter2 = vtkGaussianSplatter::New();
+    vtkGaussianSplatterExtended *Splatter2 = vtkGaussianSplatterExtended::New();
     Splatter2->SetInputData(polydata0);
     Splatter2->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter2->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
-    Splatter2->SetRadius(1.0/(this->SampleSize+1)); //only splat single points (nearly, as a value of 0 does not work correctly)
+    //Splatter2->SetRadius(1.0/(this->SampleSize+1)); //only splat single points (nearly, as a value of 0 does not work correctly), works with standard vtkGaussianSplatter
+    Splatter2->SetRadius(0); //only splat single voxels for each point, needs vtkGaussianSplatterExtended
     Splatter2->SetExponentFactor(0); //no decay
     Splatter2->SetAccumulationModeToSum();
     Splatter2->ScalarWarpingOn(); //use individual weights
