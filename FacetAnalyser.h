@@ -6,8 +6,7 @@
 #ifndef __FacetAnalyser_h
 #define __FacetAnalyser_h
 
-#include "vtkPolyDataAlgorithm.h"
-#include <vtkImplicitFunction.h>
+#include <vtkPolyDataAlgorithm.h>
 
 class VTK_EXPORT FacetAnalyser : public vtkPolyDataAlgorithm
 {
