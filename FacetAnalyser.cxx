@@ -30,7 +30,6 @@
 
 #include <itkVTKImageToImageFilter.h>
 #include <itkShiftScaleImageFilter.h>
-#include <itkStatisticsImageFilter.h>
 #include <itkHMinimaImageFilter.h>
 #include <itkRegionalMinimaImageFilter.h>
 #include <itkConnectedComponentImageFilter.h>
@@ -178,49 +177,35 @@ int FacetAnalyser::RequestData(
 /////////////////////////////////////////////////
 
 
-    const int dim = 3;
-    const unsigned int Dimension = dim;
+    const unsigned int Dimension = 3;
 
-    //use ws from markers because the label image is needed twice
-    bool ws1_conn= true;  //fully connected borders!
-    bool ws2_conn= false; //finer borders??? and no lost labels! (see mws pdf)
-    bool ws3_conn= ws2_conn; 
+    bool ws1_conn= true;//[[[doc difference]]]
+    bool ws2_conn= false;//[[[doc difference]]]
+    bool ws3_conn= ws2_conn;
 
-    typedef double PixelType; //vtk 6.1.0 + itk 4.5.1 seem to use double instead of float
+    typedef double         GreyType;
     typedef unsigned short LabelType;
-    typedef  unsigned char MPixelType;
+    typedef unsigned char  MaskType;
 
-    typedef itk::Image< PixelType, dim>    ImageType;
-    typedef itk::Image<LabelType,  dim>   LImageType;
-    typedef itk::Image<MPixelType,  Dimension>   MImageType;
-    typedef ImageType GreyImageType;
+    typedef itk::Image<GreyType,  Dimension>   GreyImageType;
+    typedef itk::Image<LabelType, Dimension>   LabelImageType;
+    typedef itk::Image<MaskType,  Dimension>   MaskImageType;
 
     itk::CStyleCommand::Pointer eventCallbackITK;
     eventCallbackITK = itk::CStyleCommand::New();
     eventCallbackITK->SetCallback(FilterEventHandlerITK);
 
 
-    typedef itk::VTKImageToImageFilter<ImageType> ConnectorType;
+    typedef itk::VTKImageToImageFilter<GreyImageType> ConnectorType;
     ConnectorType::Pointer vtkitkf = ConnectorType::New();
     vtkitkf->SetInput(cast->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf->Update();
 
-    typedef itk::StatisticsImageFilter<GreyImageType> StatType;
-    typename StatType::Pointer stat = StatType::New();
-    stat->SetInput(vtkitkf->GetOutput());
-    stat->Update();
-    std::cerr << "Min: " << PixelType(stat->GetMinimum()) << " Max: " << PixelType(stat->GetMaximum()) << " Mean: " << stat->GetMean() << " Sigma: " << stat->GetSigma() << " Variance: " << stat->GetVariance() << " Sum: " << stat->GetSum() << std::endl;
-
     typedef itk::ShiftScaleImageFilter<GreyImageType, GreyImageType> SSType;
     SSType::Pointer ss = SSType::New();
-    //ss->SetScale(-1/stat->GetSum()); //invert and normalize
-    ss->SetScale(-1.0); //invert only
+    ss->SetScale(-1); //invert by mul. with -1
     ss->SetInput(vtkitkf->GetOutput());
     ss->Update();
-
-    stat->SetInput(ss->GetOutput());
-    stat->Update();
-    std::cerr << "Min: " << PixelType(stat->GetMinimum()) << " Max: " << PixelType(stat->GetMaximum()) << " Mean: " << stat->GetMean() << " Sigma: " << stat->GetSigma() << " Variance: " << stat->GetVariance() << " Sum: " << stat->GetSum() << std::endl;
 
     typedef itk::HMinimaImageFilter<GreyImageType, GreyImageType> HMType; //seems for hmin in-type==out-type!!!
     HMType::Pointer hm= HMType::New();
@@ -228,18 +213,18 @@ int FacetAnalyser::RequestData(
     hm->SetFullyConnected(ws1_conn);
     hm->SetInput(ss->GetOutput());
 
-    typedef itk::RegionalMinimaImageFilter<GreyImageType, MImageType> RegMinType;
+    typedef itk::RegionalMinimaImageFilter<GreyImageType, MaskImageType> RegMinType;
     RegMinType::Pointer rm = RegMinType::New();
     rm->SetFullyConnected(ws1_conn);
     rm->SetInput(hm->GetOutput());
 
     // connected component labelling
-    typedef itk::ConnectedComponentImageFilter<MImageType, LImageType> CCType;
+    typedef itk::ConnectedComponentImageFilter<MaskImageType, LabelImageType> CCType;
     CCType::Pointer labeller = CCType::New();
     labeller->SetFullyConnected(ws1_conn);
     labeller->SetInput(rm->GetOutput());
 
-    typedef itk::MorphologicalWatershedFromMarkersImageFilter<GreyImageType, LImageType> MWatershedType;
+    typedef itk::MorphologicalWatershedFromMarkersImageFilter<GreyImageType, LabelImageType> MWatershedType;
     MWatershedType::Pointer ws1 = MWatershedType::New();
     ws1->SetMarkWatershedLine(true); //use borders as marker in sd. ws
     ws1->SetFullyConnected(ws1_conn); //true reduces amount of watersheds
@@ -251,7 +236,7 @@ int FacetAnalyser::RequestData(
     ws1->Update(); //whith out this update label one is lost for facet_holger particle0195!!! Why???
 
     // extract the watershed lines and combine with the orginal markers
-    typedef itk::BinaryThresholdImageFilter<LImageType, LImageType> ThreshType;
+    typedef itk::BinaryThresholdImageFilter<LabelImageType, LabelImageType> ThreshType;
     ThreshType::Pointer th = ThreshType::New();
     th->SetUpperThreshold(0);
     th->SetOutsideValue(0);
@@ -260,7 +245,7 @@ int FacetAnalyser::RequestData(
     th->SetInput(ws1->GetOutput());
 
     // Add the marker image to the watershed line image
-    typedef itk::AddImageFilter<LImageType, LImageType, LImageType> AddType;
+    typedef itk::AddImageFilter<LabelImageType, LabelImageType, LabelImageType> AddType;
     AddType::Pointer adder1= AddType::New();
     adder1->SetInput1(th->GetOutput());
     adder1->SetInput2(labeller->GetOutput());
@@ -282,7 +267,7 @@ int FacetAnalyser::RequestData(
     ws2->Update();
 
     // delete the background label
-    typedef itk::ChangeLabelImageFilter<LImageType, LImageType> ChangeLabType;
+    typedef itk::ChangeLabelImageFilter<LabelImageType, LabelImageType> ChangeLabType;
     ChangeLabType::Pointer ch1= ChangeLabType::New();
     ch1->SetInput(ws2->GetOutput());
     ch1->SetChange(labeller->GetObjectCount() + 1, 0);
@@ -336,15 +321,15 @@ int FacetAnalyser::RequestData(
     vtkitkf2->SetInput(cast2->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf2->Update();
 
-    typedef itk::MaskImageFilter<LImageType, GreyImageType, LImageType> MaskType2;
+    typedef itk::MaskImageFilter<LabelImageType, GreyImageType, LabelImageType> MaskType2;
     MaskType2::Pointer mask2 = MaskType2::New();
     mask2->SetInput1(ch2->GetOutput());
     mask2->SetInput2(vtkitkf2->GetOutput()); //mask
     mask2->Update();
 
-    typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
-    typedef itk::LabelMap< LabelObjectType > LabelMapType;
-    typedef itk::LabelImageToStatisticsLabelMapFilter<LImageType, GreyImageType, LabelMapType> ConverterType;
+    typedef itk::StatisticsLabelObject<LabelType, Dimension> LabelObjectType;
+    typedef itk::LabelMap<LabelObjectType> LabelMapType;
+    typedef itk::LabelImageToStatisticsLabelMapFilter<LabelImageType, GreyImageType, LabelMapType> ConverterType;
     ConverterType::Pointer converter = ConverterType::New();
     converter->SetInput(mask2->GetOutput());
     converter->SetFeatureImage(vtkitkf2->GetOutput()); //this should be the single splat grey image to be exact!
@@ -386,12 +371,11 @@ int FacetAnalyser::RequestData(
         double tv= splatValues->GetValue(idx);
 
         ////get label value
-        LImageType::IndexType lidx;
+        LabelImageType::IndexType lidx;
         lidx[0]= pi[0];
         lidx[1]= pi[1];
         lidx[2]= pi[2];
         LabelType tl= mask2->GetOutput()->GetPixel(lidx);
-        //LabelType tl= mask2->GetOutput()->GetPixel(dynamic_cast<LImageType::IndexType>(idx));//does not work
 
         fId->InsertNextValue(tl);
         fPb->InsertNextValue(tv);
@@ -446,25 +430,6 @@ int FacetAnalyser::RequestData(
         facetNormalPoints->InsertNextPoint(0,0,0);
         }
 
-
-    converter->SetInput(labeller->GetOutput());
-    converter->SetFeatureImage(vtkitkf->GetOutput());
-    converter->Update();
-
-    for(unsigned int label= 1; label <= NumFacets; label++){//skipping bg label 0, ie the "unfacetted" regions
-        const LabelObjectType* labelObject;
-        try{
-            labelObject = labelMap->GetLabelObject( label );
-            }
-        catch( itk::ExceptionObject exp ){
-            if (strstr(exp.GetDescription(), "No label object with label")){
-                std::cerr << "Missing label: " << label << std::endl;
-                continue;
-                }
-            }
-  
-	std::cerr << labelObject->GetSum() << std::endl;
-        }
 
     /////////////create second output/////////////
 
