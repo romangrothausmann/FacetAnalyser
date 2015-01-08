@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkGaussianSplatter.cxx
+  Module:    vtkGaussianSplatterExtended.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -12,7 +12,7 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-#include "vtkGaussianSplatter.h"
+#include "vtkGaussianSplatterExtended.h"
 
 #include "vtkDoubleArray.h"
 #include "vtkImageData.h"
@@ -24,12 +24,12 @@
 
 #include <math.h>
 
-vtkStandardNewMacro(vtkGaussianSplatter);
+vtkStandardNewMacro(vtkGaussianSplatterExtended);
 
 // Construct object with dimensions=(50,50,50); automatic computation of
 // bounds; a splat radius of 0.1; an exponent factor of -5; and normal and
 // scalar warping turned on.
-vtkGaussianSplatter::vtkGaussianSplatter()
+vtkGaussianSplatterExtended::vtkGaussianSplatterExtended()
 {
   this->SampleDimensions[0] = 50;
   this->SampleDimensions[1] = 50;
@@ -59,7 +59,7 @@ vtkGaussianSplatter::vtkGaussianSplatter()
 }
 
 //----------------------------------------------------------------------------
-int vtkGaussianSplatter::RequestInformation (
+int vtkGaussianSplatterExtended::RequestInformation (
   vtkInformation * vtkNotUsed(request),
   vtkInformationVector ** vtkNotUsed( inputVector ),
   vtkInformationVector *outputVector)
@@ -103,7 +103,7 @@ int vtkGaussianSplatter::RequestInformation (
 }
 
 //----------------------------------------------------------------------------
-int vtkGaussianSplatter::RequestData(
+int vtkGaussianSplatterExtended::RequestData(
   vtkInformation* vtkNotUsed( request ),
   vtkInformationVector** inputVector,
   vtkInformationVector* outputVector)
@@ -177,20 +177,20 @@ int vtkGaussianSplatter::RequestData(
   //
   if ( this->NormalWarping && (inNormals=pd->GetNormals()) != NULL )
     {
-    this->Sample = &vtkGaussianSplatter::EccentricGaussian;
+    this->Sample = &vtkGaussianSplatterExtended::EccentricGaussian;
     }
   else
     {
-    this->Sample = &vtkGaussianSplatter::Gaussian;
+    this->Sample = &vtkGaussianSplatterExtended::Gaussian;
     }
 
   if ( this->ScalarWarping && inScalars != NULL )
     {
-    this->SampleFactor = &vtkGaussianSplatter::ScalarSampling;
+    this->SampleFactor = &vtkGaussianSplatterExtended::ScalarSampling;
     }
   else
     {
-    this->SampleFactor = &vtkGaussianSplatter::PositionSampling;
+    this->SampleFactor = &vtkGaussianSplatterExtended::PositionSampling;
     this->S = 0.0; //position sampling does not require S to be defined
                    //but this makes purify happy.
     }
@@ -282,7 +282,7 @@ int vtkGaussianSplatter::RequestData(
 //----------------------------------------------------------------------------
 // Compute the size of the sample bounding box automatically from the
 // input data.
-void vtkGaussianSplatter::ComputeModelBounds(vtkDataSet *input,
+void vtkGaussianSplatterExtended::ComputeModelBounds(vtkDataSet *input,
                                              vtkImageData *output,
                                              vtkInformation *outInfo)
 {
@@ -349,7 +349,7 @@ void vtkGaussianSplatter::ComputeModelBounds(vtkDataSet *input,
 }
 
 // Set the dimensions of the sampling structured point set.
-void vtkGaussianSplatter::SetSampleDimensions(int i, int j, int k)
+void vtkGaussianSplatterExtended::SetSampleDimensions(int i, int j, int k)
 {
   int dim[3];
 
@@ -361,7 +361,7 @@ void vtkGaussianSplatter::SetSampleDimensions(int i, int j, int k)
 }
 
 //----------------------------------------------------------------------------
-void vtkGaussianSplatter::SetSampleDimensions(int dim[3])
+void vtkGaussianSplatterExtended::SetSampleDimensions(int dim[3])
 {
   int dataDim, i;
 
@@ -402,7 +402,7 @@ void vtkGaussianSplatter::SetSampleDimensions(int dim[3])
 }
 
 //----------------------------------------------------------------------------
-void vtkGaussianSplatter::Cap(vtkDoubleArray *s)
+void vtkGaussianSplatterExtended::Cap(vtkDoubleArray *s)
 {
   int i,j,k;
   vtkIdType idx;
@@ -467,7 +467,7 @@ void vtkGaussianSplatter::Cap(vtkDoubleArray *s)
 //
 //  Gaussian sampling
 //
-double vtkGaussianSplatter::Gaussian (double cx[3])
+double vtkGaussianSplatterExtended::Gaussian (double cx[3])
 {
   return ((cx[0]-P[0])*(cx[0]-P[0]) + (cx[1]-P[1])*(cx[1]-P[1]) +
           (cx[2]-P[2])*(cx[2]-P[2]) );
@@ -477,7 +477,7 @@ double vtkGaussianSplatter::Gaussian (double cx[3])
 //
 //  Ellipsoidal Gaussian sampling
 //
-double vtkGaussianSplatter::EccentricGaussian (double cx[3])
+double vtkGaussianSplatterExtended::EccentricGaussian (double cx[3])
 {
   double   v[3], r2, z2, rxy2, mag;
 
@@ -510,7 +510,7 @@ double vtkGaussianSplatter::EccentricGaussian (double cx[3])
 }
 
 //----------------------------------------------------------------------------
-void vtkGaussianSplatter::SetScalar(int idx, double dist2,
+void vtkGaussianSplatterExtended::SetScalar(int idx, double dist2,
                                     vtkDoubleArray *newScalars)
 {
   double v = (this->*SampleFactor)(this->S) * exp(
@@ -542,7 +542,7 @@ void vtkGaussianSplatter::SetScalar(int idx, double dist2,
 }
 
 //----------------------------------------------------------------------------
-const char *vtkGaussianSplatter::GetAccumulationModeAsString()
+const char *vtkGaussianSplatterExtended::GetAccumulationModeAsString()
 {
   if ( this->AccumulationMode == VTK_ACCUMULATION_MODE_MIN )
     {
@@ -559,7 +559,7 @@ const char *vtkGaussianSplatter::GetAccumulationModeAsString()
 }
 
 //----------------------------------------------------------------------------
-void vtkGaussianSplatter::PrintSelf(ostream& os, vtkIndent indent)
+void vtkGaussianSplatterExtended::PrintSelf(ostream& os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os,indent);
 
@@ -597,7 +597,7 @@ void vtkGaussianSplatter::PrintSelf(ostream& os, vtkIndent indent)
 }
 
 //----------------------------------------------------------------------------
-int vtkGaussianSplatter::FillInputPortInformation(
+int vtkGaussianSplatterExtended::FillInputPortInformation(
   int vtkNotUsed(port), vtkInformation* info)
 {
   info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkDataSet");

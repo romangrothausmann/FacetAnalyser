@@ -13,7 +13,7 @@
 #include <vtkMath.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkMeshQuality.h>
-#include <vtkGaussianSplatterExtended.h>
+#include "vtkGaussianSplatterExtended.h"
 #include <vtkImageCast.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>

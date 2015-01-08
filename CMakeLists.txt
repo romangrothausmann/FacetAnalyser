@@ -30,7 +30,7 @@ IF(BUILD_TESTING)
 ## build test programs
 SET(CurrentExe "TestFacetAnalyser")
 ADD_EXECUTABLE(${CurrentExe}
-  FacetAnalyser.cxx 
+  FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
   TestFacetAnalyser.cxx)
 TARGET_LINK_LIBRARIES(${CurrentExe} ${ITK_LIBRARIES})
 
