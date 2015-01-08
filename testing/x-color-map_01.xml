@@ -1,0 +1,18 @@
+<ColorMaps>
+  <ColorMap space="RGB" indexedLookup="true" name="FacetAnalyser12">
+    <Point x= "0" o="1" r=".6" g=".6" b=".6"/>
+    <Point x= "1" o="1" r="1" g="0" b="0"/>
+    <Point x= "2" o="1" r="0" g="1" b="0"/>
+    <Point x= "3" o="1" r="0" g="0" b="1"/>
+    <Point x= "4" o="1" r="1" g="1" b="0"/>
+    <Point x= "5" o="1" r="0" g="1" b="1"/>
+    <Point x= "6" o="1" r="1" g="0" b="1"/>
+    <Point x= "7" o="1" r="1" g="0.5" b="0.5"/>
+    <Point x= "8" o="1" r="0.5" g="1" b="0.5"/>
+    <Point x= "9" o="1" r="0.5" g="0.5" b="1"/>
+    <Point x="10" o="1" r="0.6" g="0.3" b="0.3"/>
+    <Point x="11" o="1" r="0.3" g=".6" b="0.3"/>
+    <Point x="12" o="1" r="0.3" g="0.3" b=".6"/>
+    <NaN r="1" g="1" b="1"/>
+  </ColorMap>
+</ColorMaps>

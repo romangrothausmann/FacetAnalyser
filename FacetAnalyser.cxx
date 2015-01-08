@@ -30,6 +30,7 @@
 
 #include <itkVTKImageToImageFilter.h>
 #include <itkShiftScaleImageFilter.h>
+#include <itkStatisticsImageFilter.h>
 #include <itkHMinimaImageFilter.h>
 #include <itkRegionalMinimaImageFilter.h>
 #include <itkConnectedComponentImageFilter.h>
@@ -58,7 +59,7 @@ FacetAnalyser::FacetAnalyser(){
     this->SampleSize= 101;
     this->AngleUncertainty= 10;
     this->SplatRadius= 0;
-    this->MinTrianglesPerFacet= 10;
+    this->MinRelFacetSize= 0.001;
     }
 
 //----------------------------------------------------------------------------
@@ -178,9 +179,20 @@ int FacetAnalyser::RequestData(
 
 
     const int dim = 3;
+    const unsigned int Dimension = dim;
+
+    //use ws from markers because the label image is needed twice
+    bool ws1_conn= true;  //fully connected borders!
+    bool ws2_conn= false; //finer borders??? and no lost labels! (see mws pdf)
+    bool ws3_conn= ws2_conn; 
 
     typedef double PixelType; //vtk 6.1.0 + itk 4.5.1 seem to use double instead of float
-    typedef itk::Image< PixelType, dim >    ImageType;
+    typedef unsigned short LabelType;
+    typedef  unsigned char MPixelType;
+
+    typedef itk::Image< PixelType, dim>    ImageType;
+    typedef itk::Image<LabelType,  dim>   LImageType;
+    typedef itk::Image<MPixelType,  Dimension>   MImageType;
     typedef ImageType GreyImageType;
 
     itk::CStyleCommand::Pointer eventCallbackITK;
@@ -193,33 +205,26 @@ int FacetAnalyser::RequestData(
     vtkitkf->SetInput(cast->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf->Update();
 
-/////////////////////// creating the sphere mask
-//also outer radius to ensure proper probability interpretation!!!
-
-    typedef  unsigned char MPixelType;
-
-    const unsigned int Dimension = dim;
-
-    typedef itk::Image<MPixelType,  Dimension>   MImageType;
-
+    typedef itk::StatisticsImageFilter<GreyImageType> StatType;
+    typename StatType::Pointer stat = StatType::New();
+    stat->SetInput(vtkitkf->GetOutput());
+    stat->Update();
+    std::cerr << "Min: " << PixelType(stat->GetMinimum()) << " Max: " << PixelType(stat->GetMaximum()) << " Mean: " << stat->GetMean() << " Sigma: " << stat->GetSigma() << " Variance: " << stat->GetVariance() << " Sum: " << stat->GetSum() << std::endl;
 
     typedef itk::ShiftScaleImageFilter<GreyImageType, GreyImageType> SSType;
     SSType::Pointer ss = SSType::New();
-    ss->SetScale(-1); //invert by mul. with -1
+    //ss->SetScale(-1/stat->GetSum()); //invert and normalize
+    ss->SetScale(-1.0); //invert only
     ss->SetInput(vtkitkf->GetOutput());
     ss->Update();
 
-    typedef unsigned short LabelType;
-    typedef itk::Image<LabelType,  dim>   LImageType;
-
-    //use ws from markers because the label image is needed twice
-    bool ws1_conn= true;  //fully connected borders!
-    bool ws2_conn= false; //finer borders??? and no lost labels! (see mws pdf)
-    bool ws3_conn= ws2_conn; 
+    stat->SetInput(ss->GetOutput());
+    stat->Update();
+    std::cerr << "Min: " << PixelType(stat->GetMinimum()) << " Max: " << PixelType(stat->GetMaximum()) << " Mean: " << stat->GetMean() << " Sigma: " << stat->GetSigma() << " Variance: " << stat->GetVariance() << " Sum: " << stat->GetSum() << std::endl;
 
     typedef itk::HMinimaImageFilter<GreyImageType, GreyImageType> HMType; //seems for hmin in-type==out-type!!!
     HMType::Pointer hm= HMType::New();
-    hm->SetHeight(this->MinTrianglesPerFacet / NumPolyDataPoints);
+    hm->SetHeight(this->MinRelFacetSize);
     hm->SetFullyConnected(ws1_conn);
     hm->SetInput(ss->GetOutput());
 
@@ -442,6 +447,25 @@ int FacetAnalyser::RequestData(
         }
 
 
+    converter->SetInput(labeller->GetOutput());
+    converter->SetFeatureImage(vtkitkf->GetOutput());
+    converter->Update();
+
+    for(unsigned int label= 1; label <= NumFacets; label++){//skipping bg label 0, ie the "unfacetted" regions
+        const LabelObjectType* labelObject;
+        try{
+            labelObject = labelMap->GetLabelObject( label );
+            }
+        catch( itk::ExceptionObject exp ){
+            if (strstr(exp.GetDescription(), "No label object with label")){
+                std::cerr << "Missing label: " << label << std::endl;
+                continue;
+                }
+            }
+  
+	std::cerr << labelObject->GetSum() << std::endl;
+        }
+
     /////////////create second output/////////////
 
     vtkSmartPointer<vtkPlanes> planes= vtkSmartPointer<vtkPlanes>::New();
@@ -568,7 +592,7 @@ void FacetAnalyser::PrintSelf(ostream& os, vtkIndent indent){
 
     os << indent << "SampleSize: " << this->SampleSize << endl;
     os << indent << "AngleUncertainty: " << this->AngleUncertainty << endl;
-    os << indent << "MinTrianglesPerFacet: " << this->MinTrianglesPerFacet << endl;
+    os << indent << "MinRelFacetSize: " << this->MinRelFacetSize << endl;
     os << indent << endl;
     }
 

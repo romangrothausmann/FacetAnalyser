@@ -38,21 +38,13 @@
         <Documentation>SplatRadius, in percent of SampleSize, if set to 0 calculated relative to AngleUncertainty</Documentation>
       </DoubleVectorProperty>
 
-      <DoubleVectorProperty name="MinTrianglesPerFacet"
-                            command="SetMinTrianglesPerFacet"
+      <DoubleVectorProperty name="MinRelFacetSize"
+                            command="SetMinRelFacetSize"
                             number_of_elements="1"
-                            default_values="10">
-        <DoubleRangeDomain name="range" />
-        <Documentation>Angle uncetainty.</Documentation>
+                            default_values="0.001">
+        <DoubleRangeDomain name="range" min="0.0" max="1.0"/>
+        <Documentation>Minimum relative size facets must have.</Documentation>
       </DoubleVectorProperty>
-
-      <!-- <IntVectorProperty name="MinTrianglesPerFacet" -->
-      <!--                    command="SetMinTrianglesPerFacet" -->
-      <!--                    number_of_elements="1" -->
-      <!--                    default_values="10"> -->
-      <!--   <IntRangeDomain name="range" /> -->
-      <!--   <Documentation>Minimum number of triangles per facet.</Documentation> -->
-      <!-- </IntVectorProperty> -->
       
     </SourceProxy>
     
