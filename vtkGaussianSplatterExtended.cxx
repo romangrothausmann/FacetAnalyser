@@ -226,11 +226,29 @@ int vtkGaussianSplatterExtended::RequestData(
       loc[i] = (this->P[i] - this->Origin[i]) / this->Spacing[i];
       }
 
-    // Determine splat footprint
-    for (i=0; i<3; i++)
-      {
-      min[i] = static_cast<int>(floor(static_cast<double>(loc[i])-this->SplatDistance[i]));
-      max[i] = static_cast<int>(ceil(static_cast<double>(loc[i])+this->SplatDistance[i]));
+    if (this->Radius == 0)
+	{
+        char splatit= 1;
+	// Determine splat footprint
+	for (i=0; i<3; i++)
+	    {
+	    min[i] = static_cast<int>(round(loc[i]));
+	    if ( min[i] < 0 || min[i] >= this->SampleDimensions[i] )
+		{
+		splatit= 0;
+		}
+	    } 
+	if (splatit){
+	    idx = min[0] + min[1]*this->SampleDimensions[0] + min[2]*sliceSize;
+	    this->SetScalar(idx,0, newScalars);
+	    }                
+	}
+    else {
+        // Determine splat footprint
+        for (i=0; i<3; i++)
+            {
+            min[i] = static_cast<int>(round(loc[i] - this->SplatDistance[i]));
+            max[i] = static_cast<int>(round(loc[i] + this->SplatDistance[i]));
       if ( min[i] < 0 )
         {
         min[i] = 0;
@@ -260,6 +278,7 @@ int vtkGaussianSplatterExtended::RequestData(
           }
         }
       }//within splat footprint
+     }//Radius != 0
     }//for all input points
 
   // If capping is turned on, set the distances of the outside of the volume
@@ -513,7 +532,11 @@ double vtkGaussianSplatterExtended::EccentricGaussian (double cx[3])
 void vtkGaussianSplatterExtended::SetScalar(int idx, double dist2,
                                     vtkDoubleArray *newScalars)
 {
-  double v = (this->*SampleFactor)(this->S) * exp(
+  double v;
+  if (this->Radius2 == 0)
+      v = (this->*SampleFactor)(this->S);
+  else
+      v = (this->*SampleFactor)(this->S) * exp(
     static_cast<double>
     (this->ExponentFactor*(dist2)/(this->Radius2)));
 

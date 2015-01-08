@@ -300,7 +300,8 @@ int FacetAnalyser::RequestData(
     Splatter2->SetInputData(polydata0);
     Splatter2->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter2->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
-    Splatter2->SetRadius(1.0/(this->SampleSize+1)); //only splat single points (nearly, as a value of 0 does not work correctly)
+    //Splatter2->SetRadius(1.0/(this->SampleSize+1)); //only splat single points (nearly, as a value of 0 does not work correctly), works with standard vtkGaussianSplatter
+    Splatter2->SetRadius(0); //only splat single voxels for each point, needs vtkGaussianSplatterExtended
     Splatter2->SetExponentFactor(0); //no decay
     Splatter2->SetAccumulationModeToSum();
     Splatter2->ScalarWarpingOn(); //use individual weights
