@@ -21,7 +21,7 @@ SET (PARAVIEW_ADDITIONAL_LIBRARIES
 
 # Use the PLUGIN macro to create a plugin.
 ADD_PARAVIEW_PLUGIN(FacetAnalyser "1.0"
-   SERVER_MANAGER_SOURCES FacetAnalyser.cxx
+   SERVER_MANAGER_SOURCES FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
    SERVER_MANAGER_XML FacetAnalyser.xml)
 
 TARGET_LINK_LIBRARIES(FacetAnalyser ${ITK_LIBRARIES})
