@@ -17,9 +17,9 @@
       <IntVectorProperty name="SampleSize"
                          command="SetSampleSize"
                          number_of_elements="1"
-                         default_values="101">
+                         default_values="51">
         <IntRangeDomain name="range" />
-        <Documentation>Sampling volume size.</Documentation>
+        <Documentation>Sampling volume size for facet probability distribution.</Documentation>
       </IntVectorProperty>
       
       <DoubleVectorProperty name="AngleUncertainty"

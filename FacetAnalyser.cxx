@@ -397,6 +397,10 @@ int FacetAnalyser::RequestData(
     facetNormals->SetNumberOfComponents(3);
     facetNormals->SetName ("facetNormals");
 
+    vtkSmartPointer<vtkIdTypeArray> hullFacetIds= vtkSmartPointer<vtkIdTypeArray>::New();
+    hullFacetIds->SetNumberOfComponents(1);
+    hullFacetIds->SetName ("FacetIds");
+
     vtkSmartPointer<vtkDoubleArray> relFacetSizes= vtkSmartPointer<vtkDoubleArray>::New();
     relFacetSizes->SetNumberOfComponents(1);
     relFacetSizes->SetName ("relFacetSize");
@@ -426,6 +430,7 @@ int FacetAnalyser::RequestData(
         c[2]= labelObject->GetCenterOfGravity()[2];
         fw= labelObject->GetSum();
         facetNormals->InsertNextTuple(c);
+        hullFacetIds->InsertNextValue(label);
         relFacetSizes->InsertNextValue(fw);
         absFacetSizes->InsertNextValue(fw * totalPolyDataArea);
         facetNormalPoints->InsertNextPoint(0,0,0);
@@ -454,11 +459,13 @@ int FacetAnalyser::RequestData(
     output1->ShallowCopy(cleanFilter->GetOutput());
     output1->GetCellData()->SetNormals(facetNormals);
     output1->GetCellData()->AddArray(relFacetSizes);
+    output1->GetCellData()->AddArray(hullFacetIds);
     output1->GetCellData()->AddArray(absFacetSizes);
 
     ////some of the planes set as input for vtkHull can get lost
     ////so set face-analyses also as FieldData to output0
     output0->GetFieldData()->AddArray(facetNormals);
+    output0->GetFieldData()->AddArray(hullFacetIds);
     output0->GetFieldData()->AddArray(relFacetSizes);
     output0->GetFieldData()->AddArray(absFacetSizes);
 
