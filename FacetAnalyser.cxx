@@ -378,10 +378,12 @@ int FacetAnalyser::RequestData(
     fPb->SetNumberOfComponents(1);
 
     vtkSmartPointer<vtkPoints> facetNormalPoints= vtkSmartPointer<vtkPoints>::New();
-    facetNormalPoints->SetNumberOfPoints(NumFacets);
+    facetNormalPoints->SetNumberOfPoints(NumFacets);//label 0 is for unfacetted regions, not counted
+    for(vtkIdType i= 0; i < NumFacets; i++) facetNormalPoints->SetPoint(i, 0, 0, 0);
 
     vtkSmartPointer<vtkIdTypeArray> facetNormalPointsCounter= vtkSmartPointer<vtkIdTypeArray>::New();
-    facetNormalPointsCounter->SetNumberOfTuples(NumFacets);
+    facetNormalPointsCounter->SetNumberOfTuples(NumFacets);//label 0 is for unfacetted regions, not counted
+    facetNormalPointsCounter->FillComponent(0, 0);
 
     vtkSmartPointer<vtkCellCenters> cellCenters= vtkSmartPointer<vtkCellCenters>::New();
     cellCenters->SetInputData(input);
@@ -411,17 +413,15 @@ int FacetAnalyser::RequestData(
         fId->InsertNextValue(tl);
         fPb->InsertNextValue(tv);
 
-        if(tl > 0){
+	vtkIdType fl= tl - 1;
+        if(fl >= 0){
             double cp[3], fp[3];
             cellCenters->GetOutput()->GetPoint(k, cp);
-            facetNormalPoints->GetPoint(tl, fp);
-            facetNormalPoints->SetPoint(tl, fp[0]+cp[0], fp[1]+cp[1], fp[2]+cp[2]);
-            facetNormalPointsCounter->SetValue(tl, facetNormalPointsCounter->GetValue(tl)+1);//facetNormalPointsCounter[k]++;
+            facetNormalPoints->GetPoint(fl, fp);
+            facetNormalPoints->SetPoint(fl, fp[0]+cp[0], fp[1]+cp[1], fp[2]+cp[2]);
+            facetNormalPointsCounter->SetValue(fl, facetNormalPointsCounter->GetValue(fl)+1);//facetNormalPointsCounter[k]++;
             }
         }
-
-    //vtkPrintVectorFormat(cerr, facetNormalPointsCounter);
-    std::cerr << "facetNormalPointsCounter created" << std::endl;
 
     // Copy original points and point data
     output0->CopyStructure(input);
@@ -477,6 +477,7 @@ int FacetAnalyser::RequestData(
         double fp[3];
         facetNormalPoints->GetPoint(label-1, fp);
         facetNormalPoints->SetPoint(label-1, fp[0]/facetNormalPointsCounter->GetValue(label-1), fp[1]/facetNormalPointsCounter->GetValue(label-1), fp[2]/facetNormalPointsCounter->GetValue(label-1));
+	fprintf(stderr, "%d: %f;%f;%f (%d)\n", label, fp[0], fp[1], fp[2], facetNormalPointsCounter->GetValue(label-1));
         }
 
 
