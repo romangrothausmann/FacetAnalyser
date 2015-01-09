@@ -2,7 +2,6 @@
 
 todo:
 
---- vtkHull GenerateHull()
 
 -- create some tests
 --- check results of test-dataset to match that of facet-ana_17
