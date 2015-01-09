@@ -200,7 +200,7 @@ int vtkGaussianSplatterExtended::RequestData(
   // the subvolume that the splat is contained in, and process that.
   //
   int abortExecute=0;
-  vtkIdType progressInterval = numPts/20 + 1;
+  vtkIdType progressInterval = numPts/100 + 1;
   for (ptId=0; ptId < numPts && !abortExecute; ptId++)
     {
     if ( ! (ptId % progressInterval) )

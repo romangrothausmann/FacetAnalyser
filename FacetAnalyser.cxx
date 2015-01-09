@@ -111,6 +111,7 @@ int FacetAnalyser::RequestData(
     vtkSmartPointer<vtkCallbackCommand> eventCallbackVTK = vtkSmartPointer<vtkCallbackCommand>::New();
     eventCallbackVTK->SetCallback(FilterEventHandlerVTK);
 
+    this->UpdateProgress(0.0);
 
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
     double f= 1/2./sin(da)/sin(da); //sin(da) corresponds to sigma
@@ -152,6 +153,8 @@ int FacetAnalyser::RequestData(
     polydata0->SetPoints(Points);
     polydata0->GetPointData()->SetScalars(areas);
 
+    this->UpdateProgress(0.1);
+
     vtkSmartPointer<vtkGaussianSplatterExtended> Splatter = vtkSmartPointer<vtkGaussianSplatterExtended>::New();
     Splatter->SetInputData(polydata0);
     Splatter->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
@@ -166,6 +169,8 @@ int FacetAnalyser::RequestData(
     Splatter->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     Splatter->Update();
  
+    this->UpdateProgress(0.2);
+
     vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
     cast->SetInputConnection(Splatter->GetOutputPort());
     cast->SetOutputScalarTypeToDouble();
@@ -201,6 +206,8 @@ int FacetAnalyser::RequestData(
     vtkitkf->SetInput(cast->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf->Update();
 
+    this->UpdateProgress(0.3);
+
     typedef itk::ShiftScaleImageFilter<GreyImageType, GreyImageType> SSType;
     SSType::Pointer ss = SSType::New();
     ss->SetScale(-1); //invert by mul. with -1
@@ -223,6 +230,8 @@ int FacetAnalyser::RequestData(
     CCType::Pointer labeller = CCType::New();
     labeller->SetFullyConnected(ws1_conn);
     labeller->SetInput(rm->GetOutput());
+
+    this->UpdateProgress(0.4);
 
     typedef itk::MorphologicalWatershedFromMarkersImageFilter<GreyImageType, LabelImageType> MWatershedType;
     MWatershedType::Pointer ws1 = MWatershedType::New();
@@ -255,6 +264,8 @@ int FacetAnalyser::RequestData(
     GMType::Pointer gm1= GMType::New();
     gm1->SetInput(ss->GetOutput());
 
+    this->UpdateProgress(0.5);
+
     // Now apply sd. watershed
     MWatershedType::Pointer ws2 = MWatershedType::New();
     ws2->SetMarkWatershedLine(false); //no use for a border in sd. stage
@@ -281,6 +292,8 @@ int FacetAnalyser::RequestData(
     GMType::Pointer gm2 = GMType::New();
     gm2->SetInput(gm1->GetOutput());
 
+    this->UpdateProgress(0.6);
+
     MWatershedType::Pointer ws3 = MWatershedType::New();
     ws3->SetFullyConnected(ws3_conn);
     ws3->SetInput(gm2->GetOutput());
@@ -291,6 +304,8 @@ int FacetAnalyser::RequestData(
     ChangeLabType::Pointer ch2= ChangeLabType::New();
     ch2->SetInput(ws3->GetOutput());
     ch2->SetChange(labeller->GetObjectCount() + 1, 0);
+
+    this->UpdateProgress(0.7);
 
 ////////////////////////Now label and grow the facet reagions... done.
 
@@ -310,6 +325,8 @@ int FacetAnalyser::RequestData(
     Splatter2->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
     Splatter2->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     Splatter2->Update();
+
+    this->UpdateProgress(0.80);
 
     vtkImageCast* cast2 = vtkImageCast::New();
     cast2->SetInputConnection(Splatter2->GetOutputPort());
@@ -337,6 +354,8 @@ int FacetAnalyser::RequestData(
     //converter->SetFullyConnected(true); //true: 26-connectivity; false: 6-connectivity
     converter->SetComputePerimeter(false);
     converter->Update();
+
+    this->UpdateProgress(0.85);
 
     LabelMapType::Pointer labelMap = converter->GetOutput();
     vtkIdType NumFacets= labelMap->GetNumberOfLabelObjects();//needed later on
@@ -437,6 +456,8 @@ int FacetAnalyser::RequestData(
         }
 
 
+    this->UpdateProgress(0.90);
+
     /////////////create second output/////////////
 
     vtkSmartPointer<vtkPlanes> planes= vtkSmartPointer<vtkPlanes>::New();
@@ -468,6 +489,8 @@ int FacetAnalyser::RequestData(
     output0->GetFieldData()->AddArray(hullFacetIds);
     output0->GetFieldData()->AddArray(relFacetSizes);
     output0->GetFieldData()->AddArray(absFacetSizes);
+
+    this->UpdateProgress(0.95);
 
     /////////////create second output field data/////////////
     
@@ -555,6 +578,8 @@ int FacetAnalyser::RequestData(
     output2->GetCellData()->AddArray(lcellPairingIds);
     output2->GetCellData()->AddArray(linterplanarAngles);
     output2->GetCellData()->AddArray(langleWeights);
+
+    this->UpdateProgress(1);
 
     return 1;
     }
