@@ -15,5 +15,7 @@ todo:
 - add switch for progress output?
 
 - parallelize vtkGaussianSplatterExtended?
-
+-- array set/get are not thread save (http://www.vtk.org/pipermail/vtkusers/2015-January/089985.html) 
+--- so either group input points into disjunct boxes of variing sizes such that each box approx. contains the same amount of points and run vtkGaussianSplatterExtended on those then finish by stitching ouputs together by e.g. sum
+--- or partition points in n groups and run vtkGaussianSplatterExtended on each group, resulting in n fully sized outputs, to finally combine together; will need n times RAM
 

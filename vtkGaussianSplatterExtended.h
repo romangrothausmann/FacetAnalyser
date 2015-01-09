@@ -72,6 +72,8 @@
 #define VTK_ACCUMULATION_MODE_SUM 2
 
 class vtkDoubleArray;
+class vtkMultiThreader;
+class vtkSimpleCriticalSection;
 
 class VTKIMAGINGHYBRID_EXPORT vtkGaussianSplatterExtended : public vtkImageAlgorithm
 {
@@ -188,7 +190,7 @@ public:
 
 protected:
   vtkGaussianSplatterExtended();
-  ~vtkGaussianSplatterExtended() {}
+  ~vtkGaussianSplatterExtended();
 
   virtual int FillInputPortInformation(int port, vtkInformation* info);
   virtual int RequestInformation (vtkInformation *,
@@ -198,6 +200,17 @@ protected:
                           vtkInformationVector **,
                           vtkInformationVector *);
   void Cap(vtkDoubleArray *s);
+
+  // Update a thread's progress. The parameter should range between
+  // (0,1), and it represents the fraction of total work done by the
+  // thread (not total work done by the filter).
+  virtual void UpdateThreadProgress(double threadProgress);
+
+  static VTK_THREAD_RETURN_TYPE ThreadedExecute( void *arg );
+
+  vtkMultiThreader         *Threader;
+  int                       NumberOfThreads;
+  vtkSimpleCriticalSection *ProgressMutex;
 
   int SampleDimensions[3]; // dimensions of volume to splat into
   double Radius; // maximum distance splat propagates (as fraction 0->1)
@@ -210,6 +223,9 @@ protected:
   int Capping; // Cap side of volume to close surfaces
   double CapValue; // value to use for capping
   int AccumulationMode; // how to combine scalar values
+
+  // Keeps track of the total progress of the filter
+  double TotalProgress;
 
   double Gaussian(double x[3]);
   double EccentricGaussian(double x[3]);

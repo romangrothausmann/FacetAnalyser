@@ -22,9 +22,22 @@
 #include "vtkStreamingDemandDrivenPipeline.h"
 #include "vtkPointData.h"
 
+#include "vtkMultiThreader.h"
+#include "vtkCriticalSection.h"
+
+#include "vtkUnstructuredGrid.h"
+#include "vtkStructuredGrid.h"
+#include "vtkRectilinearGrid.h"
+
 #include <math.h>
 
 vtkStandardNewMacro(vtkGaussianSplatterExtended);
+
+struct vtkGaussianSplatterExtendedThreadInfo
+{
+  vtkGaussianSplatterExtended *Modeller;
+  vtkDataSet               **Input;
+};
 
 // Construct object with dimensions=(50,50,50); automatic computation of
 // bounds; a splat radius of 0.1; an exponent factor of -5; and normal and
@@ -56,6 +69,25 @@ vtkGaussianSplatterExtended::vtkGaussianSplatterExtended()
 
   this->AccumulationMode = VTK_ACCUMULATION_MODE_MAX;
   this->NullValue = 0.0;
+
+
+  this->Threader        = vtkMultiThreader::New();
+  this->NumberOfThreads = this->Threader->GetNumberOfThreads();
+  this->ProgressMutex = new vtkSimpleCriticalSection;
+}
+
+//----------------------------------------------------------------------------
+vtkGaussianSplatterExtended::~vtkGaussianSplatterExtended()
+{
+  if (this->Threader)
+    {
+    this->Threader->Delete();
+    }
+
+  if (this->ProgressMutex)
+    {
+    delete this->ProgressMutex;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -117,6 +149,87 @@ int vtkGaussianSplatterExtended::RequestData(
     outInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT()));
   output->AllocateScalars(outInfo);
 
+  vtkIdType numPts;
+
+  vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+  vtkDataSet *input = vtkDataSet::SafeDownCast(
+    inInfo->Get(vtkDataObject::DATA_OBJECT()));
+  int sliceSize=this->SampleDimensions[0]*this->SampleDimensions[1];
+
+  // Check that the input type is supported
+  int dataObjectType = input->GetDataObjectType();
+  if (dataObjectType != VTK_STRUCTURED_GRID &&
+      dataObjectType != VTK_UNSTRUCTURED_GRID &&
+      dataObjectType != VTK_RECTILINEAR_GRID)
+    {
+    vtkErrorMacro(<< "vtkPartialVolumeModeller expects an input data set of type "
+                  << "vtkStructuredGrid, vtkUnstructuredGrid, or vtkRectilinearGrid.");
+    return 0;
+    }
+
+
+  vtkGaussianSplatterExtendedThreadInfo info;
+  info.Modeller = this;
+
+  numPts=input->GetNumberOfPoints();
+
+  // Set the number of threads to use
+  if ( this->NumberOfThreads > numPts)
+    {
+    this->Threader->SetNumberOfThreads(numPts);
+    }
+  else
+    {
+    this->Threader->SetNumberOfThreads(this->NumberOfThreads);
+    }
+
+  //[[[deep copy likely not needed]]]
+  info.Input = new vtkDataSet*[this->Threader->GetNumberOfThreads()];
+  for (int threadId = 0; threadId < this->Threader->GetNumberOfThreads(); threadId++)
+    {
+    switch (dataObjectType)
+      {
+      case VTK_STRUCTURED_GRID:
+        info.Input[threadId] = vtkStructuredGrid::New();
+        break;
+
+      case VTK_UNSTRUCTURED_GRID:
+        info.Input[threadId] = vtkUnstructuredGrid::New();
+        break;
+
+      case VTK_RECTILINEAR_GRID:
+        info.Input[threadId] = vtkRectilinearGrid::New();
+        break;
+      }
+    info.Input[threadId]->DeepCopy(input);
+    }
+
+  this->Threader->SetSingleMethod( vtkGaussianSplatterExtended::ThreadedExecute,
+    (void *)&info);
+  this->TotalProgress = 0.0;
+  this->Threader->SingleMethodExecute();
+
+  // Clean up.
+  for (int threadId = 0; threadId < this->Threader->GetNumberOfThreads(); threadId++)
+    {
+    info.Input[threadId]->Delete();
+    }
+  delete[] info.Input;
+
+  return 1;
+}
+
+//----------------------------------------------------------------------------
+VTK_THREAD_RETURN_TYPE vtkGaussianSplatterExtended::ThreadedExecute( void *arg )
+{
+  int threadId = ((vtkMultiThreader::ThreadInfo *)(arg))->ThreadID;
+  int threadCount = ((vtkMultiThreader::ThreadInfo *)(arg))->NumberOfThreads;
+  vtkGaussianSplatterExtendedThreadInfo *userData = (vtkGaussianSplatterExtendedThreadInfo *)
+    (((vtkMultiThreader::ThreadInfo *)(arg))->UserData);
+
+  vtkDataSet *input = userData->Input[threadId];
+  vtkImageData *output = userData->Modeller->GetOutput();
+
   vtkIdType numPts, numNewPts, ptId, idx, i;
   int j, k;
   int min[3], max[3];
@@ -127,10 +240,6 @@ int vtkGaussianSplatterExtended::RequestData(
     vtkDoubleArray::SafeDownCast(output->GetPointData()->GetScalars());
   newScalars->SetName("SplatterValues");
 
-  vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
-  vtkDataSet *input = vtkDataSet::SafeDownCast(
-    inInfo->Get(vtkDataObject::DATA_OBJECT()));
-  int sliceSize=this->SampleDimensions[0]*this->SampleDimensions[1];
 
   vtkDebugMacro(<< "Splatting data");
 
@@ -139,7 +248,7 @@ int vtkGaussianSplatterExtended::RequestData(
   if ( (numPts=input->GetNumberOfPoints()) < 1 )
     {
     vtkDebugMacro(<<"No points to splat!");
-    return 1;
+    return VTK_THREAD_RETURN_VALUE;
     }
 
   //  Compute the radius of influence of the points.  If an
@@ -209,6 +318,12 @@ int vtkGaussianSplatterExtended::RequestData(
       this->UpdateProgress (static_cast<double>(ptId)/numPts);
       abortExecute = this->GetAbortExecute();
       }
+
+    userData->Modeller->UpdateThreadProgress(voxelProgressWeight*count);
+    if (threadId == 0)
+	{
+	userData->Modeller->UpdateProgress( userData->Modeller->TotalProgress );
+	}
 
     this->P = input->GetPoint(ptId);
     if ( inNormals != NULL )
@@ -295,7 +410,7 @@ int vtkGaussianSplatterExtended::RequestData(
   //
   delete [] this->Visited;
 
-  return 1;
+  return VTK_THREAD_RETURN_VALUE;
 }
 
 //----------------------------------------------------------------------------
