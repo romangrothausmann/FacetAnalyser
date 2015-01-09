@@ -14,3 +14,7 @@ todo:
 -- remove unnecessary Updates?
 
 - add switch for progress output?
+
+- parallelize vtkGaussianSplatterExtended?
+
+

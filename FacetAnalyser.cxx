@@ -11,6 +11,7 @@
 #include <vtkCommand.h>
 
 #include <vtkMath.h>
+#include <vtkTriangleFilter.h> 
 #include <vtkPolyDataNormals.h>
 #include <vtkMeshQuality.h>
 #include "vtkGaussianSplatterExtended.h"
@@ -122,8 +123,15 @@ int FacetAnalyser::RequestData(
     else
 	R= msigma / double(SMB) * sqrt(1/2./f);
 
+    ////triangulation needed for vtkMeshQuality, which cannot compute the area for general polygons!
+    vtkSmartPointer<vtkTriangleFilter> triangulate= vtkSmartPointer<vtkTriangleFilter>::New();
+    triangulate->SetInputData(input);
+    triangulate->PassLinesOff();
+    triangulate->PassVertsOff();
+    triangulate->Update();
+
     vtkSmartPointer<vtkPolyDataNormals> PDnormals0= vtkSmartPointer<vtkPolyDataNormals>::New();
-    PDnormals0->SetInputData(input);
+    PDnormals0->SetInputConnection(triangulate->GetOutputPort());
     PDnormals0->ComputePointNormalsOff(); 
     PDnormals0->ComputeCellNormalsOn();
     PDnormals0->Update();
@@ -402,7 +410,7 @@ int FacetAnalyser::RequestData(
         }
 
     // Copy original points and point data
-    output0->CopyStructure(input);
+    output0->CopyStructure(triangulate->GetOutput());//needs to be the polydata the normals were computed for!
     output0->GetPointData()->PassData(input->GetPointData());
     output0->GetCellData()->PassData(input->GetCellData());
     output0->GetCellData()->AddArray(fId);
