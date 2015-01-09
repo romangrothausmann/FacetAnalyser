@@ -7,10 +7,13 @@
 
 #include <vtkSmartPointer.h>
 
+#include <vtkCallbackCommand.h>
+#include <vtkCommand.h>
+
 #include <vtkMath.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkMeshQuality.h>
-#include <vtkGaussianSplatter.h>
+#include "vtkGaussianSplatterExtended.h"
 #include <vtkImageCast.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
@@ -23,6 +26,8 @@
 #include <vtkHull.h>
 #include <vtkCleanPolyData.h>
 #include <vtkCellArray.h>
+
+#include <itkCommand.h>
 
 #include <itkVTKImageToImageFilter.h>
 #include <itkShiftScaleImageFilter.h>
@@ -53,11 +58,36 @@ FacetAnalyser::FacetAnalyser(){
 
     this->SampleSize= 101;
     this->AngleUncertainty= 10;
-    this->MinTrianglesPerFacet= 10;
+    this->SplatRadius= 0;
+    this->MinRelFacetSize= 0.001;
     }
 
 //----------------------------------------------------------------------------
+void FilterEventHandlerVTK(vtkObject* caller, long unsigned int eventId, void* clientData, void* callData){
 
+    vtkAlgorithm *filter= static_cast<vtkAlgorithm*>(caller);
+
+    switch(eventId){
+	case vtkCommand::ProgressEvent:
+	    fprintf(stderr, "\r%s progress: %5.1f%%", filter->GetClassName(), 100.0 * filter->GetProgress());//stderr is flushed directly
+	    break;
+	case vtkCommand::EndEvent:
+	    std::cerr << std::endl << std::flush;   
+	    break;
+	}
+    }
+
+void FilterEventHandlerITK(itk::Object *caller, const itk::EventObject &event, void*){
+
+    const itk::ProcessObject* filter = static_cast<const itk::ProcessObject*>(caller);
+
+    if(itk::ProgressEvent().CheckEvent(&event))
+	fprintf(stderr, "\r%s progress: %5.1f%%", filter->GetNameOfClass(), 100.0 * filter->GetProgress());//stderr is flushed directly
+    else if(itk::EndEvent().CheckEvent(&event))
+	std::cerr << std::endl << std::flush;   
+    }
+
+//----------------------------------------------------------------------------
 int FacetAnalyser::RequestData(
     vtkInformation *vtkNotUsed(request),
     vtkInformationVector **inputVector,
@@ -79,10 +109,19 @@ int FacetAnalyser::RequestData(
     vtkPolyData *output2 = vtkPolyData::SafeDownCast(
         outInfo2->Get(vtkDataObject::DATA_OBJECT()));
 
+    vtkSmartPointer<vtkCallbackCommand> eventCallbackVTK = vtkSmartPointer<vtkCallbackCommand>::New();
+    eventCallbackVTK->SetCallback(FilterEventHandlerVTK);
+
+    this->UpdateProgress(0.0);
 
     double da= this->AngleUncertainty / 180.0 * vtkMath::Pi(); 
     double f= 1/2./sin(da)/sin(da); //sin(da) corresponds to sigma
-    double R= msigma / double(SMB) * sqrt(1/2./f);
+
+    double R;
+    if(this->SplatRadius)
+	R= this->SplatRadius;
+    else
+	R= msigma / double(SMB) * sqrt(1/2./f);
 
     vtkSmartPointer<vtkPolyDataNormals> PDnormals0= vtkSmartPointer<vtkPolyDataNormals>::New();
     PDnormals0->SetInputData(input);
@@ -115,7 +154,9 @@ int FacetAnalyser::RequestData(
     polydata0->SetPoints(Points);
     polydata0->GetPointData()->SetScalars(areas);
 
-    vtkSmartPointer<vtkGaussianSplatter> Splatter = vtkSmartPointer<vtkGaussianSplatter>::New();
+    this->UpdateProgress(0.1);
+
+    vtkSmartPointer<vtkGaussianSplatterExtended> Splatter = vtkSmartPointer<vtkGaussianSplatterExtended>::New();
     Splatter->SetInputData(polydata0);
     Splatter->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
@@ -125,8 +166,12 @@ int FacetAnalyser::RequestData(
     Splatter->ScalarWarpingOn(); //use individual weights
     Splatter->SetScaleFactor(1/totalPolyDataArea);
     Splatter->CappingOff(); //don't pad with 0
+    Splatter->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
+    Splatter->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     Splatter->Update();
  
+    this->UpdateProgress(0.2);
+
     vtkSmartPointer<vtkImageCast> cast = vtkSmartPointer<vtkImageCast>::New();
     cast->SetInputConnection(Splatter->GetOutputPort());
     cast->SetOutputScalarTypeToDouble();
@@ -138,27 +183,31 @@ int FacetAnalyser::RequestData(
 /////////////////////////////////////////////////
 
 
-    const int dim = 3;
+    const unsigned int Dimension = 3;
 
-    typedef double PixelType; //vtk 6.1.0 + itk 4.5.1 seem to use double instead of float
-    typedef itk::Image< PixelType, dim >    ImageType;
-    typedef ImageType GreyImageType;
+    bool ws1_conn= true;//[[[doc difference]]]
+    bool ws2_conn= false;//[[[doc difference]]]
+    bool ws3_conn= ws2_conn;
 
-    typedef itk::VTKImageToImageFilter<ImageType> ConnectorType;
+    typedef double         GreyType;
+    typedef unsigned short LabelType;
+    typedef unsigned char  MaskType;
 
+    typedef itk::Image<GreyType,  Dimension>   GreyImageType;
+    typedef itk::Image<LabelType, Dimension>   LabelImageType;
+    typedef itk::Image<MaskType,  Dimension>   MaskImageType;
+
+    itk::CStyleCommand::Pointer eventCallbackITK;
+    eventCallbackITK = itk::CStyleCommand::New();
+    eventCallbackITK->SetCallback(FilterEventHandlerITK);
+
+
+    typedef itk::VTKImageToImageFilter<GreyImageType> ConnectorType;
     ConnectorType::Pointer vtkitkf = ConnectorType::New();
     vtkitkf->SetInput(cast->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf->Update();
 
-/////////////////////// creating the sphere mask
-//also outer radius to ensure proper probability interpretation!!!
-
-    typedef  unsigned char MPixelType;
-
-    const unsigned int Dimension = dim;
-
-    typedef itk::Image<MPixelType,  Dimension>   MImageType;
-
+    this->UpdateProgress(0.3);
 
     typedef itk::ShiftScaleImageFilter<GreyImageType, GreyImageType> SSType;
     SSType::Pointer ss = SSType::New();
@@ -166,42 +215,38 @@ int FacetAnalyser::RequestData(
     ss->SetInput(vtkitkf->GetOutput());
     ss->Update();
 
-    typedef unsigned short LabelType;
-    typedef itk::Image<LabelType,  dim>   LImageType;
-
-    //use ws from markers because the label image is needed twice
-    bool ws1_conn= true;  //fully connected borders!
-    bool ws2_conn= false; //finer borders??? and no lost labels! (see mws pdf)
-    bool ws3_conn= ws2_conn; 
-
     typedef itk::HMinimaImageFilter<GreyImageType, GreyImageType> HMType; //seems for hmin in-type==out-type!!!
     HMType::Pointer hm= HMType::New();
-    hm->SetHeight(this->MinTrianglesPerFacet / NumPolyDataPoints);
+    hm->SetHeight(this->MinRelFacetSize);
     hm->SetFullyConnected(ws1_conn);
     hm->SetInput(ss->GetOutput());
 
-    typedef itk::RegionalMinimaImageFilter<GreyImageType, MImageType> RegMinType;
+    typedef itk::RegionalMinimaImageFilter<GreyImageType, MaskImageType> RegMinType;
     RegMinType::Pointer rm = RegMinType::New();
     rm->SetFullyConnected(ws1_conn);
     rm->SetInput(hm->GetOutput());
 
     // connected component labelling
-    typedef itk::ConnectedComponentImageFilter<MImageType, LImageType> CCType;
+    typedef itk::ConnectedComponentImageFilter<MaskImageType, LabelImageType> CCType;
     CCType::Pointer labeller = CCType::New();
     labeller->SetFullyConnected(ws1_conn);
     labeller->SetInput(rm->GetOutput());
 
-    typedef itk::MorphologicalWatershedFromMarkersImageFilter<GreyImageType, LImageType> MWatershedType;
+    this->UpdateProgress(0.4);
+
+    typedef itk::MorphologicalWatershedFromMarkersImageFilter<GreyImageType, LabelImageType> MWatershedType;
     MWatershedType::Pointer ws1 = MWatershedType::New();
     ws1->SetMarkWatershedLine(true); //use borders as marker in sd. ws
     ws1->SetFullyConnected(ws1_conn); //true reduces amount of watersheds
     //ws1->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws1->SetInput(ss->GetOutput());
     ws1->SetMarkerImage(labeller->GetOutput());
+    ws1->AddObserver(itk::ProgressEvent(), eventCallbackITK);
+    ws1->AddObserver(itk::EndEvent(), eventCallbackITK);
     ws1->Update(); //whith out this update label one is lost for facet_holger particle0195!!! Why???
 
     // extract the watershed lines and combine with the orginal markers
-    typedef itk::BinaryThresholdImageFilter<LImageType, LImageType> ThreshType;
+    typedef itk::BinaryThresholdImageFilter<LabelImageType, LabelImageType> ThreshType;
     ThreshType::Pointer th = ThreshType::New();
     th->SetUpperThreshold(0);
     th->SetOutsideValue(0);
@@ -210,7 +255,7 @@ int FacetAnalyser::RequestData(
     th->SetInput(ws1->GetOutput());
 
     // Add the marker image to the watershed line image
-    typedef itk::AddImageFilter<LImageType, LImageType, LImageType> AddType;
+    typedef itk::AddImageFilter<LabelImageType, LabelImageType, LabelImageType> AddType;
     AddType::Pointer adder1= AddType::New();
     adder1->SetInput1(th->GetOutput());
     adder1->SetInput2(labeller->GetOutput());
@@ -220,6 +265,8 @@ int FacetAnalyser::RequestData(
     GMType::Pointer gm1= GMType::New();
     gm1->SetInput(ss->GetOutput());
 
+    this->UpdateProgress(0.5);
+
     // Now apply sd. watershed
     MWatershedType::Pointer ws2 = MWatershedType::New();
     ws2->SetMarkWatershedLine(false); //no use for a border in sd. stage
@@ -227,9 +274,12 @@ int FacetAnalyser::RequestData(
     //ws->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws2->SetInput(gm1->GetOutput());
     ws2->SetMarkerImage(adder1->GetOutput());
+    ws2->AddObserver(itk::ProgressEvent(), eventCallbackITK);
+    ws2->AddObserver(itk::EndEvent(), eventCallbackITK);
+    ws2->Update();
 
     // delete the background label
-    typedef itk::ChangeLabelImageFilter<LImageType, LImageType> ChangeLabType;
+    typedef itk::ChangeLabelImageFilter<LabelImageType, LabelImageType> ChangeLabType;
     ChangeLabType::Pointer ch1= ChangeLabType::New();
     ch1->SetInput(ws2->GetOutput());
     ch1->SetChange(labeller->GetObjectCount() + 1, 0);
@@ -243,6 +293,8 @@ int FacetAnalyser::RequestData(
     GMType::Pointer gm2 = GMType::New();
     gm2->SetInput(gm1->GetOutput());
 
+    this->UpdateProgress(0.6);
+
     MWatershedType::Pointer ws3 = MWatershedType::New();
     ws3->SetFullyConnected(ws3_conn);
     ws3->SetInput(gm2->GetOutput());
@@ -254,21 +306,28 @@ int FacetAnalyser::RequestData(
     ch2->SetInput(ws3->GetOutput());
     ch2->SetChange(labeller->GetObjectCount() + 1, 0);
 
+    this->UpdateProgress(0.7);
+
 ////////////////////////Now label and grow the facet reagions... done.
 
 
     ////spalter only single points with weights    
-    vtkGaussianSplatter *Splatter2 = vtkGaussianSplatter::New();
+    vtkGaussianSplatterExtended *Splatter2 = vtkGaussianSplatterExtended::New();
     Splatter2->SetInputData(polydata0);
     Splatter2->SetSampleDimensions(this->SampleSize,this->SampleSize,this->SampleSize); //set the resolution of the final! volume
     Splatter2->SetModelBounds(-SMB,SMB, -SMB,SMB, -SMB,SMB);
-    Splatter2->SetExponentFactor(-1); //GaussianSplat decay value
-    Splatter2->SetRadius(0); //only splat single points
+    //Splatter2->SetRadius(1.0/(this->SampleSize+1)); //only splat single points (nearly, as a value of 0 does not work correctly), works with standard vtkGaussianSplatter
+    Splatter2->SetRadius(0); //only splat single voxels for each point, needs vtkGaussianSplatterExtended
+    Splatter2->SetExponentFactor(0); //no decay
     Splatter2->SetAccumulationModeToSum();
     Splatter2->ScalarWarpingOn(); //use individual weights
     Splatter2->SetScaleFactor(1/totalPolyDataArea);
     Splatter2->CappingOff(); //don't pad with 0
+    Splatter2->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
+    Splatter2->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     Splatter2->Update();
+
+    this->UpdateProgress(0.80);
 
     vtkImageCast* cast2 = vtkImageCast::New();
     cast2->SetInputConnection(Splatter2->GetOutputPort());
@@ -281,21 +340,23 @@ int FacetAnalyser::RequestData(
     vtkitkf2->SetInput(cast2->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf2->Update();
 
-    typedef itk::MaskImageFilter<LImageType, GreyImageType, LImageType> MaskType2;
+    typedef itk::MaskImageFilter<LabelImageType, GreyImageType, LabelImageType> MaskType2;
     MaskType2::Pointer mask2 = MaskType2::New();
     mask2->SetInput1(ch2->GetOutput());
     mask2->SetInput2(vtkitkf2->GetOutput()); //mask
     mask2->Update();
 
-    typedef itk::StatisticsLabelObject< LabelType, dim > LabelObjectType;
-    typedef itk::LabelMap< LabelObjectType > LabelMapType;
-    typedef itk::LabelImageToStatisticsLabelMapFilter<LImageType, GreyImageType, LabelMapType> ConverterType;
+    typedef itk::StatisticsLabelObject<LabelType, Dimension> LabelObjectType;
+    typedef itk::LabelMap<LabelObjectType> LabelMapType;
+    typedef itk::LabelImageToStatisticsLabelMapFilter<LabelImageType, GreyImageType, LabelMapType> ConverterType;
     ConverterType::Pointer converter = ConverterType::New();
     converter->SetInput(mask2->GetOutput());
     converter->SetFeatureImage(vtkitkf2->GetOutput()); //this should be the single splat grey image to be exact!
     //converter->SetFullyConnected(true); //true: 26-connectivity; false: 6-connectivity
     converter->SetComputePerimeter(false);
     converter->Update();
+
+    this->UpdateProgress(0.85);
 
     LabelMapType::Pointer labelMap = converter->GetOutput();
     vtkIdType NumFacets= labelMap->GetNumberOfLabelObjects();//needed later on
@@ -330,10 +391,10 @@ int FacetAnalyser::RequestData(
         double pp[3];
         Points->GetPoint(k, pp); 
         vtkIdType pi[3];
-        vtkIdType idx= Splatter->ProbePoint(pp, pi);
+        vtkIdType idx= ProbePoint(Splatter->GetOutput()->GetOrigin(), Splatter->GetOutput()->GetSpacing(), Splatter->GetSampleDimensions(), pp, pi);
 
         if (idx < 0){
-            vtkErrorMacro(<< "Prope Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
+            vtkErrorMacro(<< "Probe Point: " << pp[0] << ";" << pp[1] << ";" << pp[2] << " not insied sample data");
             return VTK_ERROR;
             }
 
@@ -341,12 +402,11 @@ int FacetAnalyser::RequestData(
         double tv= splatValues->GetValue(idx);
 
         ////get label value
-        LImageType::IndexType lidx;
+        LabelImageType::IndexType lidx;
         lidx[0]= pi[0];
         lidx[1]= pi[1];
         lidx[2]= pi[2];
         LabelType tl= mask2->GetOutput()->GetPixel(lidx);
-        //LabelType tl= mask2->GetOutput()->GetPixel(dynamic_cast<LImageType::IndexType>(idx));//does not work
 
         fId->InsertNextValue(tl);
         fPb->InsertNextValue(tv);
@@ -378,6 +438,10 @@ int FacetAnalyser::RequestData(
     facetNormals->SetNumberOfComponents(3);
     facetNormals->SetName ("facetNormals");
 
+    vtkSmartPointer<vtkIdTypeArray> hullFacetIds= vtkSmartPointer<vtkIdTypeArray>::New();
+    hullFacetIds->SetNumberOfComponents(1);
+    hullFacetIds->SetName ("FacetIds");
+
     vtkSmartPointer<vtkDoubleArray> relFacetSizes= vtkSmartPointer<vtkDoubleArray>::New();
     relFacetSizes->SetNumberOfComponents(1);
     relFacetSizes->SetName ("relFacetSize");
@@ -406,6 +470,7 @@ int FacetAnalyser::RequestData(
         c[2]= labelObject->GetCenterOfGravity()[2];
         fw= labelObject->GetSum();
         facetNormals->InsertNextTuple(c);
+        hullFacetIds->InsertNextValue(label);
         relFacetSizes->InsertNextValue(fw);
         absFacetSizes->InsertNextValue(fw * totalPolyDataArea);
 
@@ -414,6 +479,8 @@ int FacetAnalyser::RequestData(
         facetNormalPoints->SetPoint(label-1, fp[0]/facetNormalPointsCounter->GetValue(label-1), fp[1]/facetNormalPointsCounter->GetValue(label-1), fp[2]/facetNormalPointsCounter->GetValue(label-1));
         }
 
+
+    this->UpdateProgress(0.90);
 
     /////////////create second output/////////////
 
@@ -438,13 +505,17 @@ int FacetAnalyser::RequestData(
     output1->ShallowCopy(cleanFilter->GetOutput());
     output1->GetCellData()->SetNormals(facetNormals);
     output1->GetCellData()->AddArray(relFacetSizes);
+    output1->GetCellData()->AddArray(hullFacetIds);
     output1->GetCellData()->AddArray(absFacetSizes);
 
     ////some of the planes set as input for vtkHull can get lost
     ////so set face-analyses also as FieldData to output0
     output0->GetFieldData()->AddArray(facetNormals);
+    output0->GetFieldData()->AddArray(hullFacetIds);
     output0->GetFieldData()->AddArray(relFacetSizes);
     output0->GetFieldData()->AddArray(absFacetSizes);
+
+    this->UpdateProgress(0.95);
 
     /////////////create second output field data/////////////
     
@@ -533,6 +604,8 @@ int FacetAnalyser::RequestData(
     output2->GetCellData()->AddArray(linterplanarAngles);
     output2->GetCellData()->AddArray(langleWeights);
 
+    this->UpdateProgress(1);
+
     return 1;
     }
 
@@ -542,7 +615,7 @@ void FacetAnalyser::PrintSelf(ostream& os, vtkIndent indent){
 
     os << indent << "SampleSize: " << this->SampleSize << endl;
     os << indent << "AngleUncertainty: " << this->AngleUncertainty << endl;
-    os << indent << "MinTrianglesPerFacet: " << this->MinTrianglesPerFacet << endl;
+    os << indent << "MinRelFacetSize: " << this->MinRelFacetSize << endl;
     os << indent << endl;
     }
 
@@ -572,4 +645,24 @@ vtkIdType FacetAnalyser::findSharedPoints(vtkIdType* pts0, vtkIdType* pts1, vtkI
             if(pts0[i] == pts1[j])
                 ptIds->InsertNextId(pts0[i]);
     return(ptIds->GetNumberOfIds());
+    }
+
+vtkIdType FacetAnalyser::ProbePoint(const double Origin[3], const double Spacing[3], const int SampleDimensions[3], const double *pp, vtkIdType *pi){
+    int i;
+    double x[3];
+
+    // Determine the voxel that the point is in
+    for (i=0; i<3; i++)
+        {
+        x[i] = round((pp[i] - Origin[i]) / Spacing[i]); //round(), int(), ceil() or floor()???
+        //cout << x[i] << endl;
+        //check if point is inside output data
+        if ( x[i] < 0 || x[i] >= SampleDimensions[i] )
+            {
+            return(-1);
+            }
+        pi[i]= x[i];
+        }
+
+    return(x[0] + x[1]*SampleDimensions[0] + x[2]*SampleDimensions[0]*SampleDimensions[1]);
     }

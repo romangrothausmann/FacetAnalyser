@@ -2,13 +2,8 @@
 
 todo:
 
-- convert CLI to PV-plugin
-- create a polyhedron and assign fdat and adat 
--- use vtkPlanes + vtkHull
---- vtkHull either with orig mesh as input (no bounds to spec.) or
 --- vtkHull GenerateHull()
 
-- create a TestFacetAnalyser.cxx
 -- create some tests
 --- check results of test-dataset to match that of facet-ana_17
 
@@ -18,8 +13,4 @@ todo:
 - clean-up
 -- remove unnecessary Updates?
 
-- convert splatter2 to vtkFastSplatter with an image of only 1 voxel?
-
-- add progress and abort?
-
-- insert vtkVertex with cell data for if(nosc==1) ? No! case to rare!
+- add switch for progress output?

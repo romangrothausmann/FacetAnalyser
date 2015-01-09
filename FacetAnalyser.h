@@ -6,8 +6,7 @@
 #ifndef __FacetAnalyser_h
 #define __FacetAnalyser_h
 
-#include "vtkPolyDataAlgorithm.h"
-#include <vtkImplicitFunction.h>
+#include <vtkPolyDataAlgorithm.h>
 
 class VTK_EXPORT FacetAnalyser : public vtkPolyDataAlgorithm
 {
@@ -22,10 +21,10 @@ public:
   vtkGetMacro(SampleSize, unsigned int);
   vtkSetMacro(AngleUncertainty, double);
   vtkGetMacro(AngleUncertainty, double);
-  /* vtkSetMacro(MinTrianglesPerFacet, unsigned int); */
-  /* vtkGetMacro(MinTrianglesPerFacet, unsigned int); */
-  vtkSetMacro(MinTrianglesPerFacet, double);
-  vtkGetMacro(MinTrianglesPerFacet, double);
+  vtkSetMacro(SplatRadius, double);
+  vtkGetMacro(SplatRadius, double);
+  vtkSetMacro(MinRelFacetSize, double);
+  vtkGetMacro(MinRelFacetSize, double);
 
 protected:
   FacetAnalyser();
@@ -33,8 +32,8 @@ protected:
 
   int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
-  unsigned int SampleSize, MinTrianglesPerFacet;
-  double AngleUncertainty;
+  unsigned int SampleSize;
+  double AngleUncertainty, SplatRadius, MinRelFacetSize;
 
 private:
   FacetAnalyser(const FacetAnalyser&);  // Not implemented.
@@ -45,6 +44,7 @@ private:
   // vtkIdType computeY(vtkIdType z);
 
   vtkIdType findSharedPoints(vtkIdType* pts0, vtkIdType* pts1, vtkIdType npts0, vtkIdType npts1, vtkIdList* ptIds);
+  vtkIdType ProbePoint(const double Origin[3], const double Spacing[3], const int SampleDimensions[3], const double *pp, vtkIdType *pi);
 
 };
 
