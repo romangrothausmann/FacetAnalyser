@@ -25,6 +25,8 @@ public:
   vtkGetMacro(SplatRadius, double);
   vtkSetMacro(MinRelFacetSize, double);
   vtkGetMacro(MinRelFacetSize, double);
+  vtkSetMacro(NumberOfExtraWS, unsigned char);
+  vtkGetMacro(NumberOfExtraWS, unsigned char);
   vtkSetMacro(OuterHull, bool);
   vtkGetMacro(OuterHull, bool);
 
@@ -37,6 +39,7 @@ protected:
   unsigned int SampleSize;
   double AngleUncertainty, SplatRadius, MinRelFacetSize;
   bool OuterHull;
+  unsigned char NumberOfExtraWS;
 
 private:
   FacetAnalyser(const FacetAnalyser&);  // Not implemented.

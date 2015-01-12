@@ -46,6 +46,14 @@
         <Documentation>Minimum relative size facets must have.</Documentation>
       </DoubleVectorProperty>
       
+      <IntVectorProperty name="#OfExtraWS"
+                         command="SetNumberOfExtraWS"
+                         number_of_elements="1"
+                         default_values="2">
+        <IntRangeDomain name="range" min="0" max="10"/>
+        <Documentation>Number of additional watershed runs.</Documentation>
+      </IntVectorProperty>
+      
       <IntVectorProperty
 	  name="OuterHull"
 	  command="SetOuterHull"

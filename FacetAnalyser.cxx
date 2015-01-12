@@ -61,6 +61,7 @@ FacetAnalyser::FacetAnalyser(){
     this->AngleUncertainty= 10;
     this->SplatRadius= 0;
     this->MinRelFacetSize= 0.001;
+    this->NumberOfExtraWS= 2;
     this->OuterHull= 0;
     }
 
@@ -194,9 +195,8 @@ int FacetAnalyser::RequestData(
 
     const unsigned int Dimension = 3;
 
-    bool ws1_conn= true;//[[[doc difference]]]
-    bool ws2_conn= false;//[[[doc difference]]]
-    bool ws3_conn= ws2_conn;
+    bool ws0_conn= true;//[[[doc difference]]]//true reduces amount of watersheds
+    bool ws_conn= false;//[[[doc difference]]]
 
     typedef double         GreyType;
     typedef unsigned short LabelType;
@@ -227,31 +227,34 @@ int FacetAnalyser::RequestData(
     typedef itk::HMinimaImageFilter<GreyImageType, GreyImageType> HMType; //seems for hmin in-type==out-type!!!
     HMType::Pointer hm= HMType::New();
     hm->SetHeight(this->MinRelFacetSize);
-    hm->SetFullyConnected(ws1_conn);
+    hm->SetFullyConnected(ws0_conn);
     hm->SetInput(ss->GetOutput());
+    hm->Update();
 
     typedef itk::RegionalMinimaImageFilter<GreyImageType, MaskImageType> RegMinType;
     RegMinType::Pointer rm = RegMinType::New();
-    rm->SetFullyConnected(ws1_conn);
+    rm->SetFullyConnected(ws0_conn);
     rm->SetInput(hm->GetOutput());
+    rm->Update();
 
     // connected component labelling
     typedef itk::ConnectedComponentImageFilter<MaskImageType, LabelImageType> CCType;
     CCType::Pointer labeller = CCType::New();
-    labeller->SetFullyConnected(ws1_conn);
+    labeller->SetFullyConnected(ws0_conn);
     labeller->SetInput(rm->GetOutput());
+    labeller->Update();
 
     this->UpdateProgress(0.4);
 
     typedef itk::MorphologicalWatershedFromMarkersImageFilter<GreyImageType, LabelImageType> MWatershedType;
-    MWatershedType::Pointer ws1 = MWatershedType::New();
-    ws1->SetMarkWatershedLine(true); //use borders as marker in sd. ws
-    ws1->SetFullyConnected(ws1_conn); //true reduces amount of watersheds
-    ws1->SetInput(ss->GetOutput());
-    ws1->SetMarkerImage(labeller->GetOutput());
-    ws1->AddObserver(itk::ProgressEvent(), eventCallbackITK);
-    ws1->AddObserver(itk::EndEvent(), eventCallbackITK);
-    ws1->Update(); //whith out this update label one is lost for facet_holger particle0195!!! Why???
+    MWatershedType::Pointer ws = MWatershedType::New();
+    ws->SetMarkWatershedLine(this->NumberOfExtraWS); //use borders if higher order WS are wanted
+    ws->SetFullyConnected(ws0_conn);
+    ws->SetInput(ss->GetOutput());
+    ws->SetMarkerImage(labeller->GetOutput());
+    ws->AddObserver(itk::ProgressEvent(), eventCallbackITK);
+    ws->AddObserver(itk::EndEvent(), eventCallbackITK);
+    ws->Update(); 
 
     // extract the watershed lines and combine with the orginal markers
     typedef itk::BinaryThresholdImageFilter<LabelImageType, LabelImageType> ThreshType;
@@ -260,61 +263,70 @@ int FacetAnalyser::RequestData(
     th->SetOutsideValue(0);
     // set the inside value to the number of markers + 1
     th->SetInsideValue(labeller->GetObjectCount() + 1);
-    th->SetInput(ws1->GetOutput());
+    th->SetInput(ws->GetOutput());
+    th->Update();
+
+    // to combine the markers again
+    typedef itk::AddImageFilter<LabelImageType, LabelImageType, LabelImageType> AddType;
+    AddType::Pointer adder = AddType::New();
+
+    // to create gradient magnitude image
+    typedef itk::GradientMagnitudeImageFilter<GreyImageType, GreyImageType> GMType;
+    GMType::Pointer gm = GMType::New();
 
     // Add the marker image to the watershed line image
-    typedef itk::AddImageFilter<LabelImageType, LabelImageType, LabelImageType> AddType;
-    AddType::Pointer adder1= AddType::New();
-    adder1->SetInput1(th->GetOutput());
-    adder1->SetInput2(labeller->GetOutput());
+    adder->SetInput1(th->GetOutput());
+    adder->SetInput2(labeller->GetOutput());
+    adder->Update();
 
     // compute a gradient
-    typedef itk::GradientMagnitudeImageFilter<GreyImageType, GreyImageType> GMType;
-    GMType::Pointer gm1= GMType::New();
-    gm1->SetInput(ss->GetOutput());
+    gm->SetInput(ss->GetOutput());
+    gm->Update();
 
     this->UpdateProgress(0.5);
 
-    // Now apply sd. watershed
-    MWatershedType::Pointer ws2 = MWatershedType::New();
-    ws2->SetMarkWatershedLine(false); //no use for a border in sd. stage
-    ws2->SetFullyConnected(ws2_conn); 
-    ws2->SetInput(gm1->GetOutput());
-    ws2->SetMarkerImage(adder1->GetOutput());
-    ws2->AddObserver(itk::ProgressEvent(), eventCallbackITK);
-    ws2->AddObserver(itk::EndEvent(), eventCallbackITK);
-    ws2->Update();
+    LabelImageType::Pointer markerImg= adder->GetOutput();
+    markerImg->DisconnectPipeline();
+    GreyImageType::Pointer gradientImg= gm->GetOutput();
+    gradientImg->DisconnectPipeline();
+    LabelImageType::Pointer finalLabelImg= ws->GetOutput();
+    finalLabelImg->DisconnectPipeline();
 
-    // delete the background label
+    ws->SetMarkWatershedLine(false); //no use for a border in higher stages
+    ws->SetFullyConnected(ws_conn); 
+
+    // to delete the background label
     typedef itk::ChangeLabelImageFilter<LabelImageType, LabelImageType> ChangeLabType;
-    ChangeLabType::Pointer ch1= ChangeLabType::New();
-    ch1->SetInput(ws2->GetOutput());
-    ch1->SetChange(labeller->GetObjectCount() + 1, 0);
+    ChangeLabType::Pointer ch= ChangeLabType::New();
+    ch->SetChange(labeller->GetObjectCount() + 1, 0);
 
-    // combine the markers again
-    // this result is not the same as ws2 because the bg-label was changed!
-    AddType::Pointer adder2 = AddType::New();
-    adder2->SetInput1(th->GetOutput());
-    adder2->SetInput2(ch1->GetOutput());
 
-    GMType::Pointer gm2 = GMType::New();
-    gm2->SetInput(gm1->GetOutput());
+    for(char i= 0; i < this->NumberOfExtraWS; i++){
 
-    this->UpdateProgress(0.6);
+	// Now apply higher order watershed
+	ws->SetInput(gradientImg);
+	ws->SetMarkerImage(markerImg);
+	ws->Update();
 
-    MWatershedType::Pointer ws3 = MWatershedType::New();
-    ws3->SetFullyConnected(ws3_conn);
-    ws3->SetInput(gm2->GetOutput());
-    ws3->SetMarkerImage(adder2->GetOutput());
-    ws3->AddObserver(itk::ProgressEvent(), eventCallbackITK);
-    ws3->AddObserver(itk::EndEvent(), eventCallbackITK);
-    ws3->SetMarkWatershedLine(false);			
-    ws3->Update();
+	// delete the background label
+	ch->SetInput(ws->GetOutput());
+	ch->Update();
 
-    // delete the background label again
-    ChangeLabType::Pointer ch2= ChangeLabType::New();
-    ch2->SetInput(ws3->GetOutput());
-    ch2->SetChange(labeller->GetObjectCount() + 1, 0);
+	// combine the markers again
+	adder->SetInput1(th->GetOutput());
+	adder->SetInput2(ch->GetOutput());
+	adder->Update();
+
+	gm->SetInput(gradientImg);
+	gm->Update();
+
+	markerImg= adder->GetOutput();
+	markerImg->DisconnectPipeline();
+	gradientImg= gm->GetOutput();
+	gradientImg->DisconnectPipeline();
+	finalLabelImg= ch->GetOutput();
+	finalLabelImg->DisconnectPipeline();
+	}
 
     this->UpdateProgress(0.7);
 
@@ -350,17 +362,17 @@ int FacetAnalyser::RequestData(
     vtkitkf2->SetInput(cast2->GetOutput()); //NOT GetOutputPort()!!!
     vtkitkf2->Update();
 
-    typedef itk::MaskImageFilter<LabelImageType, GreyImageType, LabelImageType> MaskType2;
-    MaskType2::Pointer mask2 = MaskType2::New();
-    mask2->SetInput1(ch2->GetOutput());
-    mask2->SetInput2(vtkitkf2->GetOutput()); //mask
-    mask2->Update();
+    typedef itk::MaskImageFilter<LabelImageType, GreyImageType, LabelImageType> MaskFilterType;
+    MaskFilterType::Pointer mask = MaskFilterType::New();
+    mask->SetInput1(finalLabelImg);
+    mask->SetInput2(vtkitkf->GetOutput()); //mask
+    mask->Update();
 
     typedef itk::StatisticsLabelObject<LabelType, Dimension> LabelObjectType;
     typedef itk::LabelMap<LabelObjectType> LabelMapType;
     typedef itk::LabelImageToStatisticsLabelMapFilter<LabelImageType, GreyImageType, LabelMapType> ConverterType;
     ConverterType::Pointer converter = ConverterType::New();
-    converter->SetInput(mask2->GetOutput());
+    converter->SetInput(mask->GetOutput());
     converter->SetFeatureImage(vtkitkf2->GetOutput()); //this should be the single splat grey image to be exact!
     //converter->SetFullyConnected(true); //true: 26-connectivity; false: 6-connectivity
     converter->SetComputePerimeter(false);
@@ -421,7 +433,7 @@ int FacetAnalyser::RequestData(
         lidx[0]= pi[0];
         lidx[1]= pi[1];
         lidx[2]= pi[2];
-        LabelType tl= mask2->GetOutput()->GetPixel(lidx);
+        LabelType tl= mask->GetOutput()->GetPixel(lidx);
 
         fId->InsertNextValue(tl);
         fPb->InsertNextValue(tv);
@@ -520,7 +532,7 @@ int FacetAnalyser::RequestData(
 	vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
 	hull->GenerateHull(polydata1, input->GetBounds());//replaced SetInputData and Update
 	cleanFilter->SetInputData(polydata1);
-    }
+	}
 
     cleanFilter->PointMergingOn();//this is why it's done
     cleanFilter->ConvertPolysToLinesOff();//keep degenerate polys!
