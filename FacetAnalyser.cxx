@@ -247,7 +247,6 @@ int FacetAnalyser::RequestData(
     MWatershedType::Pointer ws1 = MWatershedType::New();
     ws1->SetMarkWatershedLine(true); //use borders as marker in sd. ws
     ws1->SetFullyConnected(ws1_conn); //true reduces amount of watersheds
-    //ws1->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws1->SetInput(ss->GetOutput());
     ws1->SetMarkerImage(labeller->GetOutput());
     ws1->AddObserver(itk::ProgressEvent(), eventCallbackITK);
@@ -280,7 +279,6 @@ int FacetAnalyser::RequestData(
     MWatershedType::Pointer ws2 = MWatershedType::New();
     ws2->SetMarkWatershedLine(false); //no use for a border in sd. stage
     ws2->SetFullyConnected(ws2_conn); 
-    //ws->SetLevel(1 / double(ndp) * atof(argv[4])); //if 0: hminima skipted?
     ws2->SetInput(gm1->GetOutput());
     ws2->SetMarkerImage(adder1->GetOutput());
     ws2->AddObserver(itk::ProgressEvent(), eventCallbackITK);
@@ -294,7 +292,7 @@ int FacetAnalyser::RequestData(
     ch1->SetChange(labeller->GetObjectCount() + 1, 0);
 
     // combine the markers again
-    //this result is not the same as ws2 because the bg-label has grown!
+    // this result is not the same as ws2 because the bg-label was changed!
     AddType::Pointer adder2 = AddType::New();
     adder2->SetInput1(th->GetOutput());
     adder2->SetInput2(ch1->GetOutput());
@@ -308,7 +306,10 @@ int FacetAnalyser::RequestData(
     ws3->SetFullyConnected(ws3_conn);
     ws3->SetInput(gm2->GetOutput());
     ws3->SetMarkerImage(adder2->GetOutput());
+    ws3->AddObserver(itk::ProgressEvent(), eventCallbackITK);
+    ws3->AddObserver(itk::EndEvent(), eventCallbackITK);
     ws3->SetMarkWatershedLine(false);			
+    ws3->Update();
 
     // delete the background label again
     ChangeLabType::Pointer ch2= ChangeLabType::New();
