@@ -402,18 +402,15 @@ int FacetAnalyser::RequestData(
 
     vtkSmartPointer<vtkPoints> facetNormalPoints= vtkSmartPointer<vtkPoints>::New();
     facetNormalPoints->SetNumberOfPoints(NumFacets);//label 0 is for unfacetted regions, not counted
-    if(!this->OuterHull)
-	for(vtkIdType i= 0; i < NumFacets; i++) facetNormalPoints->SetPoint(i, 0, 0, 0);
+    for(vtkIdType i= 0; i < NumFacets; i++) facetNormalPoints->SetPoint(i, 0, 0, 0);
 
     vtkSmartPointer<vtkDoubleArray> facetNormalPointsCounter= vtkSmartPointer<vtkDoubleArray>::New();
     facetNormalPointsCounter->SetNumberOfTuples(NumFacets);//label 0 is for unfacetted regions, not counted
-    if(!this->OuterHull)
-	facetNormalPointsCounter->FillComponent(0, 0);
+    facetNormalPointsCounter->FillComponent(0, 0);
 
     vtkSmartPointer<vtkCellCenters> cellCenters= vtkSmartPointer<vtkCellCenters>::New();
     cellCenters->SetInputData(input);
-    if(!this->OuterHull)
-	cellCenters->Update(); //The cell attributes will be associated with the points on output.
+    cellCenters->Update(); //The cell attributes will be associated with the points on output.
 
     for(vtkIdType k= 0; k < NumPolyDataPoints; k++){
         double pp[3];
@@ -440,18 +437,16 @@ int FacetAnalyser::RequestData(
         fPb->InsertNextValue(tv);
 
 	
-	if(!this->OuterHull){
-	    vtkIdType fl= tl - 1;
-	    if(fl >= 0){
-		double cp[3], fp[3];
-		double w= 1;
-		if(this->AreaWeight)
-		    w= areas->GetValue(k);
-		cellCenters->GetOutput()->GetPoint(k, cp);
-		facetNormalPoints->GetPoint(fl, fp);
-		facetNormalPoints->SetPoint(fl, fp[0]+cp[0]*w, fp[1]+cp[1]*w, fp[2]+cp[2]*w);
-		facetNormalPointsCounter->SetValue(fl, facetNormalPointsCounter->GetValue(fl)+w);//facetNormalPointsCounter[k]+= w;
-		}
+	vtkIdType fl= tl - 1;
+	if(fl >= 0){
+	    double cp[3], fp[3];
+	    double w= 1;
+	    if(this->AreaWeight)
+		w= areas->GetValue(k);
+	    cellCenters->GetOutput()->GetPoint(k, cp);
+	    facetNormalPoints->GetPoint(fl, fp);
+	    facetNormalPoints->SetPoint(fl, fp[0]+cp[0]*w, fp[1]+cp[1]*w, fp[2]+cp[2]*w);
+	    facetNormalPointsCounter->SetValue(fl, facetNormalPointsCounter->GetValue(fl)+w);//facetNormalPointsCounter[k]+= w;
 	    }
         }
 
@@ -506,13 +501,9 @@ int FacetAnalyser::RequestData(
         relFacetSizes->InsertNextValue(fw);
         absFacetSizes->InsertNextValue(fw * totalPolyDataArea);
 
-	if(this->OuterHull)
-	    facetNormalPoints->SetPoint(label-1, 0,0,0);
-	else {
-	    double fp[3];
-	    facetNormalPoints->GetPoint(label-1, fp);
-	    facetNormalPoints->SetPoint(label-1, fp[0]/facetNormalPointsCounter->GetValue(label-1), fp[1]/facetNormalPointsCounter->GetValue(label-1), fp[2]/facetNormalPointsCounter->GetValue(label-1));
-	    }
+	double fp[3];
+	facetNormalPoints->GetPoint(label-1, fp);
+	facetNormalPoints->SetPoint(label-1, fp[0]/facetNormalPointsCounter->GetValue(label-1), fp[1]/facetNormalPointsCounter->GetValue(label-1), fp[2]/facetNormalPointsCounter->GetValue(label-1));
         }
 
 
@@ -552,6 +543,7 @@ int FacetAnalyser::RequestData(
     ////some of the planes set as input for vtkHull can get lost
     ////so set face-analyses also as FieldData to output0
     output0->GetFieldData()->AddArray(facetNormals);
+    output0->GetFieldData()->AddArray(facetNormalPoints->GetData());
     output0->GetFieldData()->AddArray(hullFacetIds);
     output0->GetFieldData()->AddArray(relFacetSizes);
     output0->GetFieldData()->AddArray(absFacetSizes);
