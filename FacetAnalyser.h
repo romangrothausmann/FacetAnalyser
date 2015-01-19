@@ -29,6 +29,8 @@ public:
   vtkGetMacro(NumberOfExtraWS, unsigned char);
   vtkSetMacro(OuterHull, bool);
   vtkGetMacro(OuterHull, bool);
+  vtkSetMacro(AreaWeight, bool);
+  vtkGetMacro(AreaWeight, bool);
 
 protected:
   FacetAnalyser();
@@ -38,7 +40,7 @@ protected:
 
   unsigned int SampleSize;
   double AngleUncertainty, SplatRadius, MinRelFacetSize;
-  bool OuterHull;
+  bool OuterHull, AreaWeight;
   unsigned char NumberOfExtraWS;
 
 private:

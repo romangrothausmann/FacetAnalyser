@@ -63,6 +63,7 @@ FacetAnalyser::FacetAnalyser(){
     this->MinRelFacetSize= 0.001;
     this->NumberOfExtraWS= 2;
     this->OuterHull= 0;
+    this->AreaWeight= 0;
     }
 
 //----------------------------------------------------------------------------
@@ -404,7 +405,7 @@ int FacetAnalyser::RequestData(
     if(!this->OuterHull)
 	for(vtkIdType i= 0; i < NumFacets; i++) facetNormalPoints->SetPoint(i, 0, 0, 0);
 
-    vtkSmartPointer<vtkIdTypeArray> facetNormalPointsCounter= vtkSmartPointer<vtkIdTypeArray>::New();
+    vtkSmartPointer<vtkDoubleArray> facetNormalPointsCounter= vtkSmartPointer<vtkDoubleArray>::New();
     facetNormalPointsCounter->SetNumberOfTuples(NumFacets);//label 0 is for unfacetted regions, not counted
     if(!this->OuterHull)
 	facetNormalPointsCounter->FillComponent(0, 0);
@@ -438,14 +439,18 @@ int FacetAnalyser::RequestData(
         fId->InsertNextValue(tl);
         fPb->InsertNextValue(tv);
 
+	
 	if(!this->OuterHull){
 	    vtkIdType fl= tl - 1;
 	    if(fl >= 0){
 		double cp[3], fp[3];
+		double w= 1;
+		if(this->AreaWeight)
+		    w= areas->GetValue(k);
 		cellCenters->GetOutput()->GetPoint(k, cp);
 		facetNormalPoints->GetPoint(fl, fp);
-		facetNormalPoints->SetPoint(fl, fp[0]+cp[0], fp[1]+cp[1], fp[2]+cp[2]);
-		facetNormalPointsCounter->SetValue(fl, facetNormalPointsCounter->GetValue(fl)+1);//facetNormalPointsCounter[k]++;
+		facetNormalPoints->SetPoint(fl, fp[0]+cp[0]*w, fp[1]+cp[1]*w, fp[2]+cp[2]*w);
+		facetNormalPointsCounter->SetValue(fl, facetNormalPointsCounter->GetValue(fl)+w);//facetNormalPointsCounter[k]+= w;
 		}
 	    }
         }

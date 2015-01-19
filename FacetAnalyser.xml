@@ -60,6 +60,16 @@
 	  number_of_elements="1"
 	  default_values="1">
 	<BooleanDomain name="bool"/>
+        <Documentation>Create outer or intermediate hull.</Documentation>
+      </IntVectorProperty>
+
+      <IntVectorProperty
+	  name="AreaWeight"
+	  command="SetAreaWeight"
+	  number_of_elements="1"
+	  default_values="0">
+	<BooleanDomain name="bool"/>
+        <Documentation>Weight intermediate hull face positions by area or number.</Documentation>
       </IntVectorProperty>
 
     </SourceProxy>
