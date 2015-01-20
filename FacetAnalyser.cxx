@@ -531,7 +531,9 @@ int FacetAnalyser::RequestData(
 	}
 
     cleanFilter->PointMergingOn();//this is why it's done
-    cleanFilter->ConvertPolysToLinesOff();//keep degenerate polys!
+    cleanFilter->ConvertPolysToLinesOn();
+    cleanFilter->SetTolerance(0.000001);//small tolerance needed for most hulls
+    cleanFilter->ToleranceIsAbsoluteOff();//relative tolerance 
     cleanFilter->Update();
 
     output1->ShallowCopy(cleanFilter->GetOutput());
