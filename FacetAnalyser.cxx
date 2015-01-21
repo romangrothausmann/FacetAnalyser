@@ -103,9 +103,25 @@ int FacetAnalyser::RequestData(
     vtkInformation *outInfo1 = outputVector->GetInformationObject(1);
     vtkInformation *outInfo2 = outputVector->GetInformationObject(2);
 
-    // get the input and ouptut
-    vtkPolyData *input = vtkPolyData::SafeDownCast(
-        inInfo0->Get(vtkDataObject::DATA_OBJECT()));
+    // get the input
+    vtkSmartPointer<vtkPolyData> tinput= vtkSmartPointer<vtkPolyData>::New();
+
+	{//scoped to ensure only tinput is used later on
+	vtkPolyData *input = vtkPolyData::SafeDownCast(
+	    inInfo0->Get(vtkDataObject::DATA_OBJECT()));
+
+	////triangulation needed for vtkMeshQuality, which cannot compute the area for general polygons!
+	vtkSmartPointer<vtkTriangleFilter> triangulate= vtkSmartPointer<vtkTriangleFilter>::New();
+	triangulate->SetInputData(input);
+	triangulate->PassLinesOff();
+	triangulate->PassVertsOff();
+	triangulate->Update();
+
+	tinput->ShallowCopy(triangulate->GetOutput());
+	triangulate->ReleaseDataFlagOn();
+	}
+
+    // get the ouptut
     vtkPolyData *output0 = vtkPolyData::SafeDownCast(
         outInfo0->Get(vtkDataObject::DATA_OBJECT()));
     vtkPolyData *output1 = vtkPolyData::SafeDownCast(
@@ -127,15 +143,8 @@ int FacetAnalyser::RequestData(
     else
 	R= msigma / double(SMB) * sqrt(1/2./f);
 
-    ////triangulation needed for vtkMeshQuality, which cannot compute the area for general polygons!
-    vtkSmartPointer<vtkTriangleFilter> triangulate= vtkSmartPointer<vtkTriangleFilter>::New();
-    triangulate->SetInputData(input);
-    triangulate->PassLinesOff();
-    triangulate->PassVertsOff();
-    triangulate->Update();
-
     vtkSmartPointer<vtkPolyDataNormals> PDnormals0= vtkSmartPointer<vtkPolyDataNormals>::New();
-    PDnormals0->SetInputConnection(triangulate->GetOutputPort());
+    PDnormals0->SetInputData(tinput);
     PDnormals0->ComputePointNormalsOff(); 
     PDnormals0->ComputeCellNormalsOn();
     PDnormals0->Update();
@@ -409,7 +418,7 @@ int FacetAnalyser::RequestData(
     facetCentersCounter->FillComponent(0, 0);
 
     vtkSmartPointer<vtkCellCenters> cellCenters= vtkSmartPointer<vtkCellCenters>::New();
-    cellCenters->SetInputData(input);
+    cellCenters->SetInputData(tinput);
     cellCenters->Update(); //The cell attributes will be associated with the points on output.
 
     for(vtkIdType k= 0; k < NumPolyDataPoints; k++){
@@ -451,9 +460,9 @@ int FacetAnalyser::RequestData(
         }
 
     // Copy original points and point data
-    output0->CopyStructure(triangulate->GetOutput());//needs to be the polydata the normals were computed for!
-    output0->GetPointData()->PassData(input->GetPointData());
-    output0->GetCellData()->PassData(input->GetCellData());
+    output0->CopyStructure(tinput);//needs to be the polydata the normals were computed for!
+    output0->GetPointData()->PassData(tinput->GetPointData());
+    output0->GetCellData()->PassData(tinput->GetCellData());
     output0->GetCellData()->AddArray(fId);
     output0->GetCellData()->AddArray(fPb);
 
@@ -520,13 +529,13 @@ int FacetAnalyser::RequestData(
 
     hull->SetPlanes(planes);
     if(this->OuterHull){
-	hull->SetInputData(input);
+	hull->SetInputData(tinput);
 	hull->Update();
 	cleanFilter->SetInputConnection(hull->GetOutputPort());
 	}
     else {
 	vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
-	hull->GenerateHull(polydata1, input->GetBounds());//replaced SetInputData and Update
+	hull->GenerateHull(polydata1, tinput->GetBounds());//replaced SetInputData and Update
 	cleanFilter->SetInputData(polydata1);
 	}
 
