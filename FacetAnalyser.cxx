@@ -545,18 +545,18 @@ int FacetAnalyser::RequestData(
     cleanFilter->ToleranceIsAbsoluteOff();//relative tolerance 
     cleanFilter->Update();
 
+    vtkDataArray* facetCenters = facetCenterPoints->GetData();
+    facetCenters->SetName("FacetCenters");
+
     output1->ShallowCopy(cleanFilter->GetOutput());
     output1->GetCellData()->SetNormals(facetNormals);
+    output1->GetCellData()->AddArray(facetCenters);
     output1->GetCellData()->AddArray(relFacetSizes);
     output1->GetCellData()->AddArray(hullFacetIds);
     output1->GetCellData()->AddArray(absFacetSizes);
 
     ////some of the planes set as input for vtkHull can get lost
     ////so set face-analyses also as FieldData to output0
-
-    vtkDataArray* facetCenters = facetCenterPoints->GetData();
-    facetCenters->SetName("FacetCenters");
-
     output0->GetFieldData()->AddArray(facetNormals);
     output0->GetFieldData()->AddArray(facetCenters);
     output0->GetFieldData()->AddArray(hullFacetIds);
