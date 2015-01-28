@@ -2,16 +2,6 @@
 
 todo:
 
-
--- create some tests
---- check results of test-dataset to match that of facet-ana_17
-
-
-- clean-up
--- remove unnecessary Updates?
-
-- add switch for progress output?
-
 - parallelize vtkGaussianSplatterExtended?
 
 - make vtkGaussianSplatterExtended only reexecute if its params changed in PV

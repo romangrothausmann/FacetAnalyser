@@ -19,25 +19,20 @@ INCLUDE_DIRECTORIES(${ITK_INCLUDE_DIRS})
 LINK_DIRECTORIES(${ITK_LIBRARY_DIRS})
 
 
-SET (PARAVIEW_ADDITIONAL_LIBRARIES
-   ${PARAVIEW_ADDITIONAL_LIBRARIES}
-   ${ITK_LIBRARIES}
-)
-
 
 IF(BUILD_TESTING)
 
 ## build test programs
-SET(CurrentExe "TestFacetAnalyser")
-ADD_EXECUTABLE(${CurrentExe}
+ADD_EXECUTABLE(FacetAnalyserTest
   FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
-  TestFacetAnalyser.cxx)
-TARGET_LINK_LIBRARIES(${CurrentExe} ${ITK_LIBRARIES})
+  FacetAnalyserTest.cxx)
+TARGET_LINK_LIBRARIES(FacetAnalyserTest ${ITK_LIBRARIES})
 
 ## run tests
-ADD_TEST(NAME basicTest01 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/testing/ COMMAND TestFacetAnalyser particle_0195.vtp 101 10 0.2 0.002 particle_0195_FA0.vtp particle_0195_FA1.vtp particle_0195_FA2.vtp)
+ADD_TEST(NAME basicTest01 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/testing/ COMMAND FacetAnalyserTest 8faced-rhombic-dodecahedron_twinned_simplified.vtk)
 
 ENDIF(BUILD_TESTING)
+
 
 
 OPTION( BUILD_PLUGIN
@@ -54,3 +49,21 @@ ADD_PARAVIEW_PLUGIN(FacetAnalyser "1.0"
 TARGET_LINK_LIBRARIES(FacetAnalyser ${ITK_LIBRARIES})
 
 ENDIF(BUILD_PLUGIN)
+
+
+
+OPTION( BUILD_EXAMPLE
+        "Build example"
+        OFF )
+
+IF( BUILD_EXAMPLE )
+# EXAMPLE ---------------------------------------------------------
+
+ADD_EXECUTABLE(FacetAnalyserExample
+  FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
+  FacetAnalyserExample.cxx)
+TARGET_LINK_LIBRARIES(FacetAnalyserExample ${ITK_LIBRARIES})
+
+#------------------------------------------------------------------
+ENDIF( BUILD_EXAMPLE )
+

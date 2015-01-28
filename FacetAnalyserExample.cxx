@@ -1,4 +1,4 @@
-////program to test the vtk-itk-filter: FacetAnalyser
+////example program for the vtk-itk-filter: FacetAnalyser
 
 #include <vtkSmartPointer.h>
 
