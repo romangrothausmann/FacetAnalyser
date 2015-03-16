@@ -2,6 +2,9 @@
 
 todo:
 
+- modify CMakeLists.txt to ask for standalone VTK if PV plugin is not build.
+- add publication tree to repo
+
 - parallelize vtkGaussianSplatterExtended?
 
 - make vtkGaussianSplatterExtended only reexecute if its params changed in PV

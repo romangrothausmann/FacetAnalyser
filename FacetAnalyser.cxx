@@ -216,6 +216,12 @@ int FacetAnalyser::RequestData(
     typedef itk::Image<LabelType, Dimension>   LabelImageType;
     typedef itk::Image<MaskType,  Dimension>   MaskImageType;
 
+    typename LabelImageType::Pointer markerImg;
+    typename LabelImageType::Pointer borderImg;
+    typename GreyImageType::Pointer gradientImg;
+    typename LabelImageType::Pointer labelImg;
+    typename LabelImageType::PixelType labelCnt;
+
     itk::CStyleCommand::Pointer eventCallbackITK;
     eventCallbackITK = itk::CStyleCommand::New();
     eventCallbackITK->SetCallback(FilterEventHandlerITK);
@@ -234,6 +240,7 @@ int FacetAnalyser::RequestData(
     ss->SetInput(vtkitkf->GetOutput());
     ss->Update();
 
+    {//scoped for better consistency
     typedef itk::HMinimaImageFilter<GreyImageType, GreyImageType> HMType; //seems for hmin in-type==out-type!!!
     HMType::Pointer hm= HMType::New();
     hm->SetHeight(this->MinRelFacetSize);
@@ -253,6 +260,10 @@ int FacetAnalyser::RequestData(
     labeller->SetFullyConnected(ws0_conn);
     labeller->SetInput(rm->GetOutput());
     labeller->Update();
+    labelImg= labeller->GetOutput();
+    labelImg->DisconnectPipeline();
+    labelCnt= labeller->GetObjectCount();
+    }
 
     this->UpdateProgress(0.4);
 
@@ -261,20 +272,24 @@ int FacetAnalyser::RequestData(
     ws->SetMarkWatershedLine(this->NumberOfExtraWS); //use borders if higher order WS are wanted
     ws->SetFullyConnected(ws0_conn);
     ws->SetInput(ss->GetOutput());
-    ws->SetMarkerImage(labeller->GetOutput());
+    ws->SetMarkerImage(labelImg);
     ws->AddObserver(itk::ProgressEvent(), eventCallbackITK);
     ws->AddObserver(itk::EndEvent(), eventCallbackITK);
     ws->Update(); 
 
+    {//scoped for better consistency
     // extract the watershed lines and combine with the orginal markers
     typedef itk::BinaryThresholdImageFilter<LabelImageType, LabelImageType> ThreshType;
     ThreshType::Pointer th = ThreshType::New();
     th->SetUpperThreshold(0);
     th->SetOutsideValue(0);
     // set the inside value to the number of markers + 1
-    th->SetInsideValue(labeller->GetObjectCount() + 1);
+    th->SetInsideValue(labelCnt + 1);
     th->SetInput(ws->GetOutput());
     th->Update();
+    borderImg= th->GetOutput();
+    borderImg->DisconnectPipeline();
+    }
 
     // to combine the markers again
     typedef itk::AddImageFilter<LabelImageType, LabelImageType, LabelImageType> AddType;
@@ -284,23 +299,9 @@ int FacetAnalyser::RequestData(
     typedef itk::GradientMagnitudeImageFilter<GreyImageType, GreyImageType> GMType;
     GMType::Pointer gm = GMType::New();
 
-    // Add the marker image to the watershed line image
-    adder->SetInput1(th->GetOutput());
-    adder->SetInput2(labeller->GetOutput());
-    adder->Update();
-
-    // compute a gradient
-    gm->SetInput(ss->GetOutput());
-    gm->Update();
+    gradientImg= ss->GetOutput();
 
     this->UpdateProgress(0.5);
-
-    LabelImageType::Pointer markerImg= adder->GetOutput();
-    markerImg->DisconnectPipeline();
-    GreyImageType::Pointer gradientImg= gm->GetOutput();
-    gradientImg->DisconnectPipeline();
-    LabelImageType::Pointer finalLabelImg= ws->GetOutput();
-    finalLabelImg->DisconnectPipeline();
 
     ws->SetMarkWatershedLine(false); //no use for a border in higher stages
     ws->SetFullyConnected(ws_conn); 
@@ -308,10 +309,23 @@ int FacetAnalyser::RequestData(
     // to delete the background label
     typedef itk::ChangeLabelImageFilter<LabelImageType, LabelImageType> ChangeLabType;
     ChangeLabType::Pointer ch= ChangeLabType::New();
-    ch->SetChange(labeller->GetObjectCount() + 1, 0);
+    ch->SetChange(labelCnt + 1, 0);
 
 
     for(char i= 0; i < this->NumberOfExtraWS; i++){
+
+	// Add the marker image to the watershed line image
+	adder->SetInput1(borderImg);
+	adder->SetInput2(labelImg);
+	adder->Update();
+	markerImg= adder->GetOutput();
+	markerImg->DisconnectPipeline();
+
+	// compute a gradient
+	gm->SetInput(gradientImg);
+	gm->Update();
+	gradientImg= gm->GetOutput();
+	gradientImg->DisconnectPipeline();
 
 	// Now apply higher order watershed
 	ws->SetInput(gradientImg);
@@ -322,20 +336,8 @@ int FacetAnalyser::RequestData(
 	ch->SetInput(ws->GetOutput());
 	ch->Update();
 
-	// combine the markers again
-	adder->SetInput1(th->GetOutput());
-	adder->SetInput2(ch->GetOutput());
-	adder->Update();
-
-	gm->SetInput(gradientImg);
-	gm->Update();
-
-	markerImg= adder->GetOutput();
-	markerImg->DisconnectPipeline();
-	gradientImg= gm->GetOutput();
-	gradientImg->DisconnectPipeline();
-	finalLabelImg= ch->GetOutput();
-	finalLabelImg->DisconnectPipeline();
+	labelImg= ch->GetOutput();
+	labelImg->DisconnectPipeline();
 	}
 
     this->UpdateProgress(0.7);
@@ -374,7 +376,7 @@ int FacetAnalyser::RequestData(
 
     typedef itk::MaskImageFilter<LabelImageType, GreyImageType, LabelImageType> MaskFilterType;
     MaskFilterType::Pointer mask = MaskFilterType::New();
-    mask->SetInput1(finalLabelImg);
+    mask->SetInput1(labelImg);
     mask->SetInput2(vtkitkf->GetOutput()); //mask
     mask->Update();
 

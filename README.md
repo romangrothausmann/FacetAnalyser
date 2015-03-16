@@ -1,6 +1,7 @@
 # FacetAnalyser
-ParaView plugin for automated measurement of interplanar angles of faceted tomographic objects
+ParaView plugin for automated facet detection and measurement of interplanar angles of tomographic objects
 
+See http://www.midasjournal.org/browse/publication/951 or http://hdl.handle.net/10380/3510 for more details.
 
 
 
