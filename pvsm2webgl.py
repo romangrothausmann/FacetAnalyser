@@ -4,6 +4,7 @@
 
 
 import paraview.simple as pvs
+import os.path
 
 
 def main():
@@ -22,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description=usage_text)
 
     parser.add_argument("-i", "--input", dest="input", metavar='FILE', required=True, help="Input path contained in a text file.")
+    parser.add_argument("-p", "--plugin", dest="plugin", metavar='FILE', required=True, help="Path to FA-plugin (libFacetAnalyser.so).")
     parser.add_argument("-o", "--output", dest="output", metavar='FILE', required=True, help="Output name to export WebGL")
 
     args = parser.parse_args(argv)
@@ -35,10 +37,17 @@ def main():
        parser.print_help()
        sys.exit(1)
 
+    if not args.plugin:
+       print('Need a plugin file')
+       parser.print_help()
+       sys.exit(1)
+
     if not args.output:
        print('Need an output file')
        parser.print_help()
        sys.exit(1)
+
+    pvs.LoadPlugin(args.plugin, remote='False')
 
     ## read pvsm
     pvs.LoadState(args.input)
@@ -52,6 +61,13 @@ def main():
     exporter.SetView(rv)
     exporter.Write()
 
+    ## output for ctest for regex-check because script itself fails with:
+    ## Inconsistency detected by ld.so: dl-close.c: _dl_close: Assertion `map->l_init_called' failed!
+    ## this happens even without qt-at-spi: http://www.cfd-online.com/Forums/openfoam-paraview/128851-pvpython-ubuntu-deb-package.html
+    if os.path.isfile(os.path.splitext(args.output)[0]+".html"):
+        print("Export succeded")
+    else:
+        print("Export failed")
 
 if __name__ == "__main__":
     main()

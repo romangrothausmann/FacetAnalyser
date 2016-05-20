@@ -36,6 +36,13 @@ TARGET_LINK_LIBRARIES(FacetAnalyserTest ${ITK_LIBRARIES} ${VTK_LIBRARIES})
 ## run tests
 ADD_TEST(NAME basicTest01 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/testing/ COMMAND FacetAnalyserTest 8faced-rhombic-dodecahedron_twinned_simplified.vtk)
 
+IF(BUILD_PLUGIN)
+  ADD_TEST(NAME basicPluginTest01 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/demos/ COMMAND ${ParaView_DIR}/bin/pvpython ${PROJECT_SOURCE_DIR}/pvsm2webgl.py -i 8faced-rhombic-dodecahedron_twinned_simp+def.pvsm -o 8faced-rhombic-dodecahedron_twinned_simp+def.webgl -p ${CMAKE_CURRENT_BINARY_DIR}/libFacetAnalyser.so )
+
+  set_tests_properties(basicPluginTest01 PROPERTIES PASS_REGULAR_EXPRESSION "Export succeded")    ## regex-check because script itself fails with: Inconsistency detected by ld.so: dl-close.c: _dl_close: Assertion `map->l_init_called' failed!
+
+ENDIF(BUILD_PLUGIN)
+
 ENDIF(BUILD_TESTING)
 
 
