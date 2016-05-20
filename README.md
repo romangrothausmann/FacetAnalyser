@@ -3,7 +3,7 @@ ParaView plugin for automated facet detection and measurement of interplanar ang
 
 See http://www.midasjournal.org/browse/publication/951 or http://hdl.handle.net/10380/3510 for more details.
 
-
+A 3D view of its demo-output can be seen [here](demos/8faced-rhombic-dodecahedron_twinned_simp+def.html) (needs WebGL).
 
 ## Installation
 
