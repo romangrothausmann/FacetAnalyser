@@ -186,8 +186,7 @@ int FacetAnalyser::RequestData(
     Splatter->ScalarWarpingOn(); //use individual weights
     Splatter->SetScaleFactor(1/totalPolyDataArea);
     Splatter->CappingOff(); //don't pad with 0
-    Splatter->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
-    Splatter->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
+    Splatter->AddObserver(vtkCommand::AnyEvent, eventCallbackVTK);
     Splatter->Update();
  
     this->UpdateProgress(0.2);

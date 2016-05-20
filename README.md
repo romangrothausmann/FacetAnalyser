@@ -12,18 +12,26 @@ Configure ParaView with cmake as follows:
 
 `BUILD_SHARED_LIBS  ON`  
 
-Compile ParaView with make and optionally install it. The following ITK compilation does not need ParaView to be installed. After compilation change into the directory /paraview-build-dir/lib/ and create symbolic links without the ParaView suffix. In a BASH fore example with:
-
-`for i in *-pv*.so; do ln -s $i ${i%-pv*}.so; done`
-
+Compile ParaView with make and optionally install it. The following ITK compilation does not need ParaView to be installed.
 
 Configure ITK with cmake as follows, set /paraview-build-dir/ to the build directory used for building ParaView:
 
-
-`Module_ITKVtkGlue  ON`  
-`Module_ITKReview   ON`   
-`VTK_DIR            /paraview-build-dir/VTK/`  
-`CMAKE_CXX_FLAGS    -L/paraview-build-dir/lib/`  
+`cmake \`
+`-DVTK_DIR=/paraview-build-dir/VTK/ \`
+`-DCMAKE_INSTALL_PREFIX=/ITK-install-dir_with-pvVTK/ \`
+`-DModule_ITKVtkGlue=ON \`
+`-DModule_ITKReview=ON \`
+`-DBUILD_SHARED_LIBS=ON \`
 
 The two additionally enabled ITK modules are needed for the connection of VTK with ITK and for the watershed filters. It is essential, that VTK_DIR is set to the build directory containing VTK shipped with ParaView.
+
+Then create a build dir and configure FacetAnalyser:
+
+`cmake \`
+`-DITK_DIR=/ITK-install-dir_with-pvVTK/lib/cmake/ITK-*.*/ \`
+`-DParaView_DIR=/paraview-build-dir/ \`
+`-DBUILD_PLUGIN=ON \`
+`-DBUILD_TESTING=ON \`
+`-DBUILD_EXAMPLE=ON \`
+
 

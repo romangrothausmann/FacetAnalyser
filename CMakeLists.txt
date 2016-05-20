@@ -1,6 +1,11 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
+if(POLICY CMP0023)
+  message(STATUS "Explicitly setting policy CMP0023 to OLD (needed by PV 4.4)")
+  cmake_policy(SET CMP0023 OLD)
+endif(POLICY CMP0023)
+
 #Change PROJECT_NAME to the name of your project
 PROJECT(FacetAnalyser)
 
@@ -26,7 +31,7 @@ IF(BUILD_TESTING)
 ADD_EXECUTABLE(FacetAnalyserTest
   FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
   FacetAnalyserTest.cxx)
-TARGET_LINK_LIBRARIES(FacetAnalyserTest ${ITK_LIBRARIES})
+TARGET_LINK_LIBRARIES(FacetAnalyserTest ${ITK_LIBRARIES} ${VTK_LIBRARIES})
 
 ## run tests
 ADD_TEST(NAME basicTest01 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/testing/ COMMAND FacetAnalyserTest 8faced-rhombic-dodecahedron_twinned_simplified.vtk)
@@ -62,7 +67,7 @@ IF( BUILD_EXAMPLE )
 ADD_EXECUTABLE(FacetAnalyserExample
   FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
   FacetAnalyserExample.cxx)
-TARGET_LINK_LIBRARIES(FacetAnalyserExample ${ITK_LIBRARIES})
+TARGET_LINK_LIBRARIES(FacetAnalyserExample ${ITK_LIBRARIES} ${VTK_LIBRARIES})
 
 #------------------------------------------------------------------
 ENDIF( BUILD_EXAMPLE )
