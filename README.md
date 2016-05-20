@@ -5,6 +5,8 @@ See http://www.midasjournal.org/browse/publication/951 or http://hdl.handle.net/
 
 A 3D view of its demo-output can be seen [here](http://htmlpreview.github.io/?https://github.com/romangrothausmann/FacetAnalyser/blob/master/demos/8faced-rhombic-dodecahedron_twinned_simp%2Bdef.html) (needs WebGL).
 
+![Results of FacetAnalyser in PV](demos/ss_PV-431_01.png)
+
 ## Installation
 
 
