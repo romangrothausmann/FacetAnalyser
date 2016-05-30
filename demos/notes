@@ -1,0 +1,17 @@
+
+
+PV with OpenGL2 segfaults after plugin executed successfully
+PV with OpenGL is fine
+
+vglrun needed for PV with OpenGL2 (OpenGL does not need vglrun):
+vglrun make test
+
+WebGL export test segfaults with OpenGL2
+WebGL export test is fine with OpenGL
+
+
+
+x3d2xhtml:
+
+xalan -in 8faced-rhombic-dodecahedron_twinned_simp+def.x3d -xsl X3dToX3dom.xslt -out 8faced-rhombic-dodecahedron_twinned_simp+def.xhtml
+
