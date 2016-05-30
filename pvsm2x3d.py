@@ -24,7 +24,7 @@ def main():
 
     parser.add_argument("-i", "--input", dest="input", metavar='FILE', required=True, help="Input path contained in a text file.")
     parser.add_argument("-p", "--plugin", dest="plugin", metavar='FILE', required=True, help="Path to FA-plugin (libFacetAnalyser.so).")
-    parser.add_argument("-o", "--output", dest="output", metavar='FILE', required=True, help="Output name to export WebGL")
+    parser.add_argument("-o", "--output", dest="output", metavar='FILE', required=True, help="Output name to export X3D")
 
     args = parser.parse_args(argv)
 
@@ -57,7 +57,7 @@ def main():
     exporters= pvs.servermanager.createModule("exporters")
     # dir(exporters) # lists export modules: CSVExporter, CinemaExporter, GL2PSContextViewExporterBase, GL2PSContextViewExporterEPS, GL2PSContextViewExporterPDF, GL2PSContextViewExporterPS, GL2PSContextViewExporterSVG, GL2PSExporterBase, GL2PSRenderViewExporterBase, GL2PSRenderViewExporterEPS, GL2PSRenderViewExporterPDF, GL2PSRenderViewExporterPS, GL2PSRenderViewExporterSVG, POVExporter, VRMLExporter, WebGLExporter, X3DExporter, X3DExporterBinary
     
-    exporter= exporters.WebGLExporter(FileName=args.output)
+    exporter= exporters.X3DExporter(FileName=args.output)
     exporter.SetView(rv)
     exporter.Write()
 
