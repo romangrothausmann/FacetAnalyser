@@ -33,12 +33,12 @@ void FilterEventHandler(vtkObject* caller, long unsigned int eventId, void* clie
 int main(int argc, char* argv[]){
 
 
-    if( argc != 10 )
+    if( argc < 8 )
 	{
 	std::cerr << "Usage: " << argv[0];
 	std::cerr << " inputMesh";
 	std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize NumberOfExtraWS";
-	std::cerr << " outputMesh0 outputMesh1 outputMesh2 ";
+	std::cerr << " outputMesh0 [outputMesh1] [outputMesh2] ";
 	std::cerr << std::endl;  
 	return EXIT_FAILURE;
 	}
@@ -53,15 +53,17 @@ int main(int argc, char* argv[]){
 	return -1;
 	}
 
-    if(!(strcasestr(argv[8],".vtp"))) {
-	std::cerr << "The output should end with .vtp" << std::endl; 
-	return -1;
-	}
+    if(argc >= 9)
+	if(!(strcasestr(argv[8],".vtp"))) {
+	    std::cerr << "The output should end with .vtp" << std::endl; 
+	    return -1;
+	    }
 
-    if(!(strcasestr(argv[9],".vtp"))) {
-	std::cerr << "The output should end with .vtp" << std::endl; 
-	return -1;
-	}
+    if(argc >= 10)
+	if(!(strcasestr(argv[9],".vtp"))) {
+	    std::cerr << "The output should end with .vtp" << std::endl; 
+	    return -1;
+	    }
 
 
     vtkSmartPointer<vtkCallbackCommand> eventCallbackVTK = vtkSmartPointer<vtkCallbackCommand>::New();
@@ -104,14 +106,18 @@ int main(int argc, char* argv[]){
     writer->SetInputConnection(filter->GetOutputPort(0));
     writer->Update();
 
-    writer->SetFileName(argv[8]);
-    writer->SetInputConnection(filter->GetOutputPort(1));
-    writer->Update();
-
-    writer->SetFileName(argv[9]);
-    writer->SetInputConnection(filter->GetOutputPort(2));
-    writer->Update();
-
+    if(argc >= 9){
+	writer->SetFileName(argv[8]);
+	writer->SetInputConnection(filter->GetOutputPort(1));
+	writer->Update();
+	}
+    
+    if(argc >= 10){
+	writer->SetFileName(argv[9]);
+	writer->SetInputConnection(filter->GetOutputPort(2));
+	writer->Update();
+	}
+    
     return EXIT_SUCCESS;
  
     }
