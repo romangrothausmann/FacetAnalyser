@@ -33,11 +33,11 @@ void FilterEventHandler(vtkObject* caller, long unsigned int eventId, void* clie
 int main(int argc, char* argv[]){
 
 
-    if( argc != 9 )
+    if( argc != 10 )
 	{
 	std::cerr << "Usage: " << argv[0];
 	std::cerr << " inputMesh";
-	std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize";
+	std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize NumberOfExtraWS";
 	std::cerr << " outputMesh0 outputMesh1 outputMesh2 ";
 	std::cerr << std::endl;  
 	return EXIT_FAILURE;
@@ -45,11 +45,6 @@ int main(int argc, char* argv[]){
 
     if(!(strcasestr(argv[1],".vtp"))) {
 	std::cerr << "The input should end with .vtp" << std::endl; 
-	return -1;
-	}
-
-    if(!(strcasestr(argv[6],".vtp"))) {
-	std::cerr << "The output should end with .vtp" << std::endl; 
 	return -1;
 	}
 
@@ -63,6 +58,11 @@ int main(int argc, char* argv[]){
 	return -1;
 	}
 
+    if(!(strcasestr(argv[9],".vtp"))) {
+	std::cerr << "The output should end with .vtp" << std::endl; 
+	return -1;
+	}
+
 
     vtkSmartPointer<vtkCallbackCommand> eventCallbackVTK = vtkSmartPointer<vtkCallbackCommand>::New();
     eventCallbackVTK->SetCallback(FilterEventHandler);
@@ -72,6 +72,7 @@ int main(int argc, char* argv[]){
     double AngleUncertainty= atof(argv[3]);
     double SplatRadius= atof(argv[4]);
     double MinRelFacetSize= atof(argv[5]);
+    unsigned char NumberOfExtraWS= atoi(argv[6]);
 
     //vtkObject::SetGlobalWarningDisplay(1);
 
@@ -87,6 +88,7 @@ int main(int argc, char* argv[]){
     filter->SetAngleUncertainty(AngleUncertainty);
     filter->SetSplatRadius(SplatRadius);
     filter->SetMinRelFacetSize(MinRelFacetSize);
+    filter->SetNumberOfExtraWS(NumberOfExtraWS);
     if(P_VERBOSE) filter->AddObserver(vtkCommand::ProgressEvent, eventCallbackVTK);
     if(P_VERBOSE) filter->AddObserver(vtkCommand::EndEvent, eventCallbackVTK);
     filter->Update();
@@ -98,15 +100,15 @@ int main(int argc, char* argv[]){
 
 
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-    writer->SetFileName(argv[6]);
+    writer->SetFileName(argv[7]);
     writer->SetInputConnection(filter->GetOutputPort(0));
     writer->Update();
 
-    writer->SetFileName(argv[7]);
+    writer->SetFileName(argv[8]);
     writer->SetInputConnection(filter->GetOutputPort(1));
     writer->Update();
 
-    writer->SetFileName(argv[8]);
+    writer->SetFileName(argv[9]);
     writer->SetInputConnection(filter->GetOutputPort(2));
     writer->Update();
 
