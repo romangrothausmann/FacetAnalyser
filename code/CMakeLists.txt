@@ -75,10 +75,10 @@ OPTION( BUILD_EXAMPLE
 IF( BUILD_EXAMPLE )
 # EXAMPLE ---------------------------------------------------------
 
-ADD_EXECUTABLE(FacetAnalyserExample
+ADD_EXECUTABLE(FacetAnalyserCLI
   FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
-  FacetAnalyserExample.cxx)
-TARGET_LINK_LIBRARIES(FacetAnalyserExample ${ITK_LIBRARIES} ${VTK_LIBRARIES})
+  FacetAnalyserCLI.cxx)
+TARGET_LINK_LIBRARIES(FacetAnalyserCLI ${ITK_LIBRARIES} ${VTK_LIBRARIES})
 
 #------------------------------------------------------------------
 ENDIF( BUILD_EXAMPLE )
