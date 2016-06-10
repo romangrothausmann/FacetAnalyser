@@ -21,49 +21,49 @@ void FilterEventHandler(vtkObject* caller, long unsigned int eventId, void* clie
     vtkAlgorithm *filter= static_cast<vtkAlgorithm*>(caller);
 
     switch(eventId){
-	case vtkCommand::ProgressEvent:
-	    fprintf(stderr, "\r%s progress: %5.1f%%", filter->GetClassName(), 100.0 * filter->GetProgress());//stderr is flushed directly
-	    break;
-	case vtkCommand::EndEvent:
-	    std::cerr << std::endl << std::flush;   
-	    break;
-	}
+        case vtkCommand::ProgressEvent:
+            fprintf(stderr, "\r%s progress: %5.1f%%", filter->GetClassName(), 100.0 * filter->GetProgress());//stderr is flushed directly
+            break;
+        case vtkCommand::EndEvent:
+            std::cerr << std::endl << std::flush;
+            break;
+        }
     }
 
 int main(int argc, char* argv[]){
 
 
     if( argc < 8 )
-	{
-	std::cerr << "Usage: " << argv[0];
-	std::cerr << " inputMesh";
-	std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize NumberOfExtraWS";
-	std::cerr << " outputMesh0 [outputMesh1] [outputMesh2] ";
-	std::cerr << std::endl;  
-	return EXIT_FAILURE;
-	}
+        {
+        std::cerr << "Usage: " << argv[0];
+        std::cerr << " inputMesh";
+        std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize NumberOfExtraWS";
+        std::cerr << " outputMesh0 [outputMesh1] [outputMesh2] ";
+        std::cerr << std::endl;
+        return EXIT_FAILURE;
+        }
 
     if(!(strcasestr(argv[1],".vtp"))) {
-	std::cerr << "The input should end with .vtp" << std::endl; 
-	return -1;
-	}
+        std::cerr << "The input should end with .vtp" << std::endl;
+        return -1;
+        }
 
     if(!(strcasestr(argv[7],".vtp"))) {
-	std::cerr << "The output should end with .vtp" << std::endl; 
-	return -1;
-	}
+        std::cerr << "The output should end with .vtp" << std::endl;
+        return -1;
+        }
 
     if(argc >= 9)
-	if(!(strcasestr(argv[8],".vtp"))) {
-	    std::cerr << "The output should end with .vtp" << std::endl; 
-	    return -1;
-	    }
+        if(!(strcasestr(argv[8],".vtp"))) {
+            std::cerr << "The output should end with .vtp" << std::endl;
+            return -1;
+            }
 
     if(argc >= 10)
-	if(!(strcasestr(argv[9],".vtp"))) {
-	    std::cerr << "The output should end with .vtp" << std::endl; 
-	    return -1;
-	    }
+        if(!(strcasestr(argv[9],".vtp"))) {
+            std::cerr << "The output should end with .vtp" << std::endl;
+            return -1;
+            }
 
 
     vtkSmartPointer<vtkCallbackCommand> eventCallbackVTK = vtkSmartPointer<vtkCallbackCommand>::New();
@@ -79,11 +79,11 @@ int main(int argc, char* argv[]){
     //vtkObject::SetGlobalWarningDisplay(1);
 
     vtkSmartPointer<vtkXMLPolyDataReader> reader0 = vtkSmartPointer<vtkXMLPolyDataReader>::New();
- 
+
     reader0->SetFileName(argv[1]);
     reader0->Update();
 
-    vtkSmartPointer<FacetAnalyser> filter = vtkSmartPointer<FacetAnalyser>::New(); 
+    vtkSmartPointer<FacetAnalyser> filter = vtkSmartPointer<FacetAnalyser>::New();
 
     filter->SetInputConnection(reader0->GetOutputPort());
     filter->SetSampleSize(SampleSize);
@@ -107,19 +107,19 @@ int main(int argc, char* argv[]){
     writer->Update();
 
     if(argc >= 9){
-	writer->SetFileName(argv[8]);
-	writer->SetInputConnection(filter->GetOutputPort(1));
-	writer->Update();
-	}
-    
+        writer->SetFileName(argv[8]);
+        writer->SetInputConnection(filter->GetOutputPort(1));
+        writer->Update();
+        }
+
     if(argc >= 10){
-	writer->SetFileName(argv[9]);
-	writer->SetInputConnection(filter->GetOutputPort(2));
-	writer->Update();
-	}
-    
+        writer->SetFileName(argv[9]);
+        writer->SetInputConnection(filter->GetOutputPort(2));
+        writer->Update();
+        }
+
     return EXIT_SUCCESS;
- 
+
     }
 
 
