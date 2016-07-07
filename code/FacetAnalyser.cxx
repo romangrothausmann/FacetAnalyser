@@ -145,6 +145,12 @@ int FacetAnalyser::RequestData(
 
     vtkSmartPointer<vtkPolyDataNormals> PDnormals0= vtkSmartPointer<vtkPolyDataNormals>::New();
     PDnormals0->SetInputData(tinput);
+    PDnormals0->ConsistencyOn(); // default! important for open surfaces
+    PDnormals0->NonManifoldTraversalOn(); // default
+    PDnormals0->FlipNormalsOff(); // default
+    PDnormals0->AutoOrientNormalsOff(); // default, only for closed surfaces	
+    PDnormals0->SplittingOff(); // default is On, i.e. use FeatureAngle
+    PDnormals0->SetFeatureAngle(180); // no splitting, should not matter with SplittingOff
     PDnormals0->ComputePointNormalsOff(); 
     PDnormals0->ComputeCellNormalsOn();
     PDnormals0->Update();
