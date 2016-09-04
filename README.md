@@ -2,7 +2,7 @@
 ParaView plugin for automated facet detection and measurement of interplanar angles of tomographic objects
 
 <img src="http://romangrothausmann.github.io/FacetAnalyser/demos/SVGs/8faced-rhombic-dodecahedron_twinned_simp%2Bdef_01_04c_l01.svg" width="400">
-<img src="http://romangrothausmann.github.io/FacetAnalyser/demos/SVGs/8faced-rhombic-dodecahedron_ar_kd_10_2_l01.svg" width="400">
+<img src="http://romangrothausmann.github.io/FacetAnalyser/demos/SVGs/8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.svg" width="400">
 
 See http://www.midasjournal.org/browse/publication/951 or http://hdl.handle.net/10380/3510 for more details.
 
