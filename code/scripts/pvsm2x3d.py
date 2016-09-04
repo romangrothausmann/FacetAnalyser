@@ -64,7 +64,7 @@ def main():
     ## output for ctest for regex-check because script itself fails with:
     ## Inconsistency detected by ld.so: dl-close.c: _dl_close: Assertion `map->l_init_called' failed!
     ## this happens even without qt-at-spi: http://www.cfd-online.com/Forums/openfoam-paraview/128851-pvpython-ubuntu-deb-package.html
-    if os.path.isfile(os.path.splitext(args.output)[0]+".html"):
+    if os.path.isfile(args.output):
         print("Export succeded")
     else:
         print("Export failed")
