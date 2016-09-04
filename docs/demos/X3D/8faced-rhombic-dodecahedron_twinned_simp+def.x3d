@@ -2,7 +2,7 @@
 
 <X3D profile="Immersive" version="3.0">
   <head>
-    <meta name="filename" content="8faced-rhombic-dodecahedron_twinned_simp+def.x3d"/>
+    <meta name="filename" content="../docs/demos/X3D/8faced-rhombic-dodecahedron_twinned_simp+def.x3d"/>
     <meta name="generator" content="Visualization ToolKit X3D exporter v0.9.1"/>
     <meta name="numberofelements" content="120"/>
   </head>
