@@ -14,5 +14,5 @@ all : 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.svg
 	/opt/VTK-CLIs/bin/vtpFD2csv $< | datamash -t, --no-strict --filler="" transpose > $@ # vtpFD2csv from VTK-CLIs
 
 %.svg : %.csv
-	/opt/gnuplot-5.0.3/bin/gnuplot -e "datafile='$<'; outfile='$@'; bin=10; sigma=5; xmin=0; xmax=180; col='interplanarAngles'; sep=','; xlabel='interplanar angle (IPA)'" ~/gnuplot/hist-ar+kd.gp # gp-5.x allows referencing columns by header-name ;-)
+	/opt/gnuplot/bin/gnuplot -e "datafile='$<'; outfile='$@'; bin=10; sigma=5; xmin=0; xmax=180; col='interplanarAngles'; sep=','; xlabel='interplanar angle (IPA)'" ~/gnuplot/hist-ar+kd.gp # gp-5.x allows referencing columns by header-name ;-)
 	@test -f $@ # gnuplot' exit dose not allow specifying a return value
