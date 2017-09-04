@@ -541,8 +541,10 @@ int FacetAnalyser::RequestData(
 	cleanFilter->SetInputConnection(hull->GetOutputPort());
 	}
     else {
+	double nb[6];
 	vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
-	hull->GenerateHull(polydata1, tinput->GetBounds());//replaced SetInputData and Update
+	incBounds(tinput->GetBounds(), nb, 10);
+	hull->GenerateHull(polydata1, nb);//replaced SetInputData and Update
 	cleanFilter->SetInputData(polydata1);
 	}
 
@@ -720,4 +722,12 @@ vtkIdType FacetAnalyser::ProbePoint(const double Origin[3], const double Spacing
         }
 
     return(x[0] + x[1]*SampleDimensions[0] + x[2]*SampleDimensions[0]*SampleDimensions[1]);
+    }
+
+void FacetAnalyser::incBounds(double * ob, double nb[6], double factor){
+    for (int i=0; i<3; i++){
+	double  d= ob[i*2+1] - ob[i*2];
+	nb[i*2]  = ob[i*2]   - d * factor;
+	nb[i*2+1]= ob[i*2+1] + d * factor;
+	}
     }
