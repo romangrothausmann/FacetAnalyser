@@ -627,25 +627,27 @@ int FacetAnalyser::RequestData(
                 interplanarAngles->InsertNextValue(angle);
                 angleWeights->InsertNextValue(aw);
 
-                vtkIdType *pts0, *pts1;
-                vtkIdType npts0, npts1, nosc;
-                output1->GetCellPoints(u,npts0,pts0);
-                output1->GetCellPoints(v,npts1,pts1);
-                vtkSmartPointer<vtkIdList> idlst= vtkSmartPointer<vtkIdList>::New();
-                if((nosc= findSharedPoints(pts0, pts1, npts0, npts1, idlst)) == 2){
-                    //vtkSmartPointer<vtkLine> line= vtkSmartPointer<vtkLine>::New();
-                    lines->InsertNextCell(2);
-                    lines->InsertCellPoint(idlst->GetId(0));
-                    lines->InsertCellPoint(idlst->GetId(1));
-
-                    lcellPairingIds->InsertNextValue(CantorPairing(u+1,v+1));//for consistency: label 0 is for unfacetted regions in output0
-                    linterplanarAngles->InsertNextValue(angle);
-                    langleWeights->InsertNextValue(aw);
-                    }
-                else if(nosc>2){
-                    vtkErrorMacro(<< "Adjacent cells share more than one edge. This is not handled! " << u << "; " << v << "; " << "; " << npts0 << "; " << npts1 << "; " << nosc);
-                    //return VTK_ERROR; //not needed, mesh will just lack some lines
-                    }
+		if(output1->GetNumberOfCells()){ // only meaningful if output1 has cells
+		    vtkIdType *pts0, *pts1;
+		    vtkIdType npts0, npts1, nosc;
+		    output1->GetCellPoints(u,npts0,pts0);
+		    output1->GetCellPoints(v,npts1,pts1);
+		    vtkSmartPointer<vtkIdList> idlst= vtkSmartPointer<vtkIdList>::New();
+		    if((nosc= findSharedPoints(pts0, pts1, npts0, npts1, idlst)) == 2){
+			//vtkSmartPointer<vtkLine> line= vtkSmartPointer<vtkLine>::New();
+			lines->InsertNextCell(2);
+			lines->InsertCellPoint(idlst->GetId(0));
+			lines->InsertCellPoint(idlst->GetId(1));
+			
+			lcellPairingIds->InsertNextValue(CantorPairing(u+1,v+1));//for consistency: label 0 is for unfacetted regions in output0
+			linterplanarAngles->InsertNextValue(angle);
+			langleWeights->InsertNextValue(aw);
+			}
+		    else if(nosc>2){
+			vtkErrorMacro(<< "Adjacent cells share more than one edge. This is not handled! " << u << "; " << v << "; " << "; " << npts0 << "; " << npts1 << "; " << nosc);
+			//return VTK_ERROR; //not needed, mesh will just lack some lines
+			}
+		    }
                 }
             }
         }
@@ -660,13 +662,18 @@ int FacetAnalyser::RequestData(
     output0->GetFieldData()->AddArray(interplanarAngles);
     output0->GetFieldData()->AddArray(angleWeights);
 
-    output2->SetPoints(output1->GetPoints());
-    output2->SetLines(lines);
- 
-    output2->GetCellData()->AddArray(lcellPairingIds);
-    output2->GetCellData()->AddArray(linterplanarAngles);
-    output2->GetCellData()->AddArray(langleWeights);
-
+    if(output1->GetNumberOfCells()){ // only meaningful if output1 has cells
+	output2->SetPoints(output1->GetPoints());
+	output2->SetLines(lines);
+	
+	output2->GetCellData()->AddArray(lcellPairingIds);
+	output2->GetCellData()->AddArray(linterplanarAngles);
+	output2->GetCellData()->AddArray(langleWeights);
+	}
+    else {
+	std::cerr << std::endl << "WARNING: Hull has no faces! Third output will be empty as well, but data will be part of FieldData of the main output." << std::endl << std::flush;
+	}
+    
     this->UpdateProgress(1);
 
     return 1;
