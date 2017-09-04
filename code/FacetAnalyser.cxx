@@ -558,11 +558,17 @@ int FacetAnalyser::RequestData(
     facetCenters->SetName("FacetCenters");
 
     output1->ShallowCopy(cleanFilter->GetOutput());
-    output1->GetCellData()->SetNormals(facetNormals);
-    output1->GetCellData()->AddArray(facetCenters);
-    output1->GetCellData()->AddArray(relFacetSizes);
-    output1->GetCellData()->AddArray(hullFacetIds);
-    output1->GetCellData()->AddArray(absFacetSizes);
+    
+    if(output1->GetNumberOfCells() == NumFacets){
+	output1->GetCellData()->SetNormals(facetNormals);
+	output1->GetCellData()->AddArray(facetCenters);
+	output1->GetCellData()->AddArray(relFacetSizes);
+	output1->GetCellData()->AddArray(hullFacetIds);
+	output1->GetCellData()->AddArray(absFacetSizes);
+	}
+    else {
+	std::cerr << std::endl << "WARNING: Hull has less faces than facets found! Not assigning CellData to hull, but data will be part of FieldData of the main output." << std::endl << std::flush;   
+	}
 
     ////some of the planes set as input for vtkHull can get lost
     ////so set face-analyses also as FieldData to output0
