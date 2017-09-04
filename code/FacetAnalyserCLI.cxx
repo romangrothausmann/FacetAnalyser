@@ -86,6 +86,7 @@ int main(int argc, char* argv[]){
     vtkSmartPointer<FacetAnalyser> filter = vtkSmartPointer<FacetAnalyser>::New();
 
     filter->SetInputConnection(reader0->GetOutputPort());
+    filter->SetOuterHull(0);
     filter->SetSampleSize(SampleSize);
     filter->SetAngleUncertainty(AngleUncertainty);
     filter->SetSplatRadius(SplatRadius);
