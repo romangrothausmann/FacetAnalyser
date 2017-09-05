@@ -572,7 +572,7 @@ int FacetAnalyser::RequestData(
 	output1->GetCellData()->AddArray(absFacetSizes);
 	}
     else {
-	vtkWarningMacro( << "WARNING: Hull has less faces than facets found! Not assigning CellData to hull, but data will be part of FieldData of the main output.");   
+	vtkWarningMacro( << "WARNING: Hull has less faces (" << output1->GetNumberOfCells() << ") than facets found (" << NumFacets << ")! Not assigning CellData to hull, but data will be part of FieldData of the main output.");   
 	}
 
     ////some of the planes set as input for vtkHull can get lost
@@ -632,11 +632,11 @@ int FacetAnalyser::RequestData(
                 interplanarAngles->InsertNextValue(angle);
                 angleWeights->InsertNextValue(aw);
 
-		if(output1->GetNumberOfCells()){ // only meaningful if output1 has cells
+		if(output1->GetNumberOfCells() == NumFacets){ // only meaningful if output1 has as many cells as there are facets
 		    vtkIdType *pts0, *pts1;
 		    vtkIdType npts0, npts1, nosc;
-		    output1->GetCellPoints(u,npts0,pts0);
-		    output1->GetCellPoints(v,npts1,pts1);
+		    output1->GetCellPoints(u,npts0,pts0); // segfaults if u > output1->GetNumberOfCells()!
+		    output1->GetCellPoints(v,npts1,pts1); // segfaults if v > output1->GetNumberOfCells()!
 		    vtkSmartPointer<vtkIdList> idlst= vtkSmartPointer<vtkIdList>::New();
 		    if((nosc= findSharedPoints(pts0, pts1, npts0, npts1, idlst)) == 2){
 			//vtkSmartPointer<vtkLine> line= vtkSmartPointer<vtkLine>::New();
@@ -667,7 +667,7 @@ int FacetAnalyser::RequestData(
     output0->GetFieldData()->AddArray(interplanarAngles);
     output0->GetFieldData()->AddArray(angleWeights);
 
-    if(output1->GetNumberOfCells()){ // only meaningful if output1 has cells
+    if(output1->GetNumberOfCells() == NumFacets){ // only meaningful if output1 has as many cells as there are facets
 	output2->SetPoints(output1->GetPoints());
 	output2->SetLines(lines);
 	
@@ -676,7 +676,7 @@ int FacetAnalyser::RequestData(
 	output2->GetCellData()->AddArray(langleWeights);
 	}
     else {
-	vtkWarningMacro( << "WARNING: Hull has no faces! Third output will be empty as well, but data will be part of FieldData of the main output.");
+	vtkWarningMacro( << "WARNING: Hull has less faces than facets found! Third output will be empty as well, because correspondence between lost face and facet is unclear, but data will be part of FieldData of the main output.");
 	}
     
     this->UpdateProgress(1);
