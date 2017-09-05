@@ -1,0 +1,5 @@
+## build in patterns https://git.kernel.org/pub/scm/git/git.git/tree/userdiff.c?id=HEAD # https://git-scm.com/docs/gitattributes/#_defining_a_custom_hunk_header
+*.cxx      diff=cpp
+*.txx      diff=cpp
+*.hxx      diff=cpp
+*.h        diff=cpp

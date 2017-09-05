@@ -527,38 +527,43 @@ int FacetAnalyser::RequestData(
 
     /////////////create second output/////////////
 
-    vtkSmartPointer<vtkPlanes> planes= vtkSmartPointer<vtkPlanes>::New();
-    planes->SetPoints(facetCenterPoints);
-    planes->SetNormals(facetNormals);
-
-    vtkSmartPointer<vtkCleanPolyData> cleanFilter= vtkSmartPointer<vtkCleanPolyData>::New();
-    vtkSmartPointer<vtkHull> hull= vtkSmartPointer<vtkHull>::New();
-
-    hull->SetPlanes(planes);
-    if(this->OuterHull){
-	hull->SetInputData(tinput);
-	hull->Update();
-	cleanFilter->SetInputConnection(hull->GetOutputPort());
+    if(NumFacets > 3){ // vtkHull only works with planes >=4 
+	vtkSmartPointer<vtkPlanes> planes= vtkSmartPointer<vtkPlanes>::New();
+	planes->SetPoints(facetCenterPoints);
+	planes->SetNormals(facetNormals);
+	
+	vtkSmartPointer<vtkCleanPolyData> cleanFilter= vtkSmartPointer<vtkCleanPolyData>::New();
+	vtkSmartPointer<vtkHull> hull= vtkSmartPointer<vtkHull>::New();
+	
+	hull->SetPlanes(planes);
+	if(this->OuterHull){
+	    hull->SetInputData(tinput);
+	    hull->Update();
+	    cleanFilter->SetInputConnection(hull->GetOutputPort());
+	    }
+	else {
+	    double nb[6];
+	    vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
+	    incBounds(tinput->GetBounds(), nb, 10);
+	    hull->GenerateHull(polydata1, nb);//replaced SetInputData and Update
+	    cleanFilter->SetInputData(polydata1);
+	    }
+	
+	cleanFilter->PointMergingOn();//this is why it's done
+	cleanFilter->ConvertPolysToLinesOn();
+	cleanFilter->SetTolerance(0.000001);//small tolerance needed for most hulls
+	cleanFilter->ToleranceIsAbsoluteOff();//relative tolerance 
+	cleanFilter->Update();
+	
+	output1->ShallowCopy(cleanFilter->GetOutput());
 	}
-    else {
-	double nb[6];
-	vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New();
-	incBounds(tinput->GetBounds(), nb, 10);
-	hull->GenerateHull(polydata1, nb);//replaced SetInputData and Update
-	cleanFilter->SetInputData(polydata1);
+    else{
+	vtkWarningMacro( << "WARNING: less than 4 facets found, no hull will be created, but data will be part of FieldData of the main output.");   
 	}
-
-    cleanFilter->PointMergingOn();//this is why it's done
-    cleanFilter->ConvertPolysToLinesOn();
-    cleanFilter->SetTolerance(0.000001);//small tolerance needed for most hulls
-    cleanFilter->ToleranceIsAbsoluteOff();//relative tolerance 
-    cleanFilter->Update();
 
     vtkDataArray* facetCenters = facetCenterPoints->GetData();
     facetCenters->SetName("FacetCenters");
-
-    output1->ShallowCopy(cleanFilter->GetOutput());
-    
+   
     if(output1->GetNumberOfCells() == NumFacets){
 	output1->GetCellData()->SetNormals(facetNormals);
 	output1->GetCellData()->AddArray(facetCenters);
@@ -567,7 +572,7 @@ int FacetAnalyser::RequestData(
 	output1->GetCellData()->AddArray(absFacetSizes);
 	}
     else {
-	std::cerr << std::endl << "WARNING: Hull has less faces than facets found! Not assigning CellData to hull, but data will be part of FieldData of the main output." << std::endl << std::flush;   
+	vtkWarningMacro( << "WARNING: Hull has less faces than facets found! Not assigning CellData to hull, but data will be part of FieldData of the main output.");   
 	}
 
     ////some of the planes set as input for vtkHull can get lost
@@ -644,7 +649,7 @@ int FacetAnalyser::RequestData(
 			langleWeights->InsertNextValue(aw);
 			}
 		    else if(nosc>2){
-			vtkErrorMacro(<< "Adjacent cells share more than one edge. This is not handled! " << u << "; " << v << "; " << "; " << npts0 << "; " << npts1 << "; " << nosc);
+			vtkWarningMacro( << "Adjacent cells share more than one edge. This is not handled! " << u << "; " << v << "; " << "; " << npts0 << "; " << npts1 << "; " << nosc);
 			//return VTK_ERROR; //not needed, mesh will just lack some lines
 			}
 		    }
@@ -671,7 +676,7 @@ int FacetAnalyser::RequestData(
 	output2->GetCellData()->AddArray(langleWeights);
 	}
     else {
-	std::cerr << std::endl << "WARNING: Hull has no faces! Third output will be empty as well, but data will be part of FieldData of the main output." << std::endl << std::flush;
+	vtkWarningMacro( << "WARNING: Hull has no faces! Third output will be empty as well, but data will be part of FieldData of the main output.");
 	}
     
     this->UpdateProgress(1);
