@@ -632,11 +632,15 @@ int FacetAnalyser::RequestData(
                 interplanarAngles->InsertNextValue(angle);
                 angleWeights->InsertNextValue(aw);
 
-		if(output1->GetNumberOfCells() == NumFacets){ // only meaningful if output1 has as many cells as there are facets
+		vtkIdType U, V;
+		if( findTuple(u, U, vtkIdTypeArray::SafeDownCast(output1->GetCellData()->GetScalars("PlaneIDs"))) // cast will be NULL if output1 has no cells
+		    &&
+		    findTuple(v, V, vtkIdTypeArray::SafeDownCast(output1->GetCellData()->GetScalars("PlaneIDs")))
+		    ){ // only meaningful if output1 has cells to corresponding facets
 		    vtkIdType *pts0, *pts1;
 		    vtkIdType npts0, npts1, nosc;
-		    output1->GetCellPoints(u,npts0,pts0); // segfaults if u > output1->GetNumberOfCells()!
-		    output1->GetCellPoints(v,npts1,pts1); // segfaults if v > output1->GetNumberOfCells()!
+		    output1->GetCellPoints(U,npts0,pts0);
+		    output1->GetCellPoints(V,npts1,pts1);
 		    vtkSmartPointer<vtkIdList> idlst= vtkSmartPointer<vtkIdList>::New();
 		    if((nosc= findSharedPoints(pts0, pts1, npts0, npts1, idlst)) == 2){
 			//vtkSmartPointer<vtkLine> line= vtkSmartPointer<vtkLine>::New();
@@ -667,7 +671,7 @@ int FacetAnalyser::RequestData(
     output0->GetFieldData()->AddArray(interplanarAngles);
     output0->GetFieldData()->AddArray(angleWeights);
 
-    if(output1->GetNumberOfCells() == NumFacets){ // only meaningful if output1 has as many cells as there are facets
+    if(lines->GetNumberOfCells()){ // only meaningful if lines got created
 	output2->SetPoints(output1->GetPoints());
 	output2->SetLines(lines);
 	
@@ -748,4 +752,19 @@ void FacetAnalyser::incBounds(double * ob, double nb[6], double factor){
 	nb[i*2]  = ob[i*2]   - d * factor;
 	nb[i*2+1]= ob[i*2+1] + d * factor;
 	}
+    }
+
+bool FacetAnalyser::findTuple(vtkIdType value, vtkIdType & index, vtkIdTypeArray *array){
+    //// return first occurance of value in array
+    //// expecting NumberOfComponents == 1
+    if(array){
+	for (vtkIdType i=0; i<array->GetNumberOfTuples(); i++){
+	    if(array->GetValue(i) == value){ // or GetTpule(i, tuple)?
+		index= i;
+		return(true);
+		}
+	    }
+	}
+
+    return(false); // indicate that value was not found
     }
