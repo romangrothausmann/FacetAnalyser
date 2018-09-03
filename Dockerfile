@@ -1,8 +1,9 @@
-FROM registry.gitlab.com/romangrothausmann/dockerfiles/vtk-rhg:vtk-7.1.1_planeIDs4vtkHull_itk-4.12.2 as builder
+FROM registry.gitlab.com/romangrothausmann/dockerfiles/vtk-rhg/itk:vtk-7.1.1_planeIDs4vtkHull_itk-4.12.2 as builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ca-certificates `# essential for git over https` \
+    cmake \
     build-essential
 
 RUN git clone http://github.com/romangrothausmann/FacetAnalyser.git
