@@ -34,6 +34,6 @@ stages:
     - docker push $IMAGE_TAG:latest
   retry: 2
 
-itksnap:
+facetanalyser-cli:
   stage: build
   <<: *build_definition

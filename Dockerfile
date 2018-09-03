@@ -22,7 +22,7 @@ RUN mkdir -p FacetAnalyser_build && \
 	  -DBUILD_TESTING=OFF \
 	  ../FacetAnalyser/code/ && \
     make -j"$(nproc)" && \
-    make -j"$(nproc)" install
+    mkdir /opt/FacetAnalyser/ && cp FacetAnalyserCLI /opt/FacetAnalyser/
 
 
 FROM ubuntu:16.04
