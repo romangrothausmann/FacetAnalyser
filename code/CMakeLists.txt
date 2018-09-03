@@ -1,11 +1,6 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
-if(POLICY CMP0023)
-  message(STATUS "Explicitly setting policy CMP0023 to OLD (needed by PV 4.4)")
-  cmake_policy(SET CMP0023 OLD)
-endif(POLICY CMP0023)
-
 #Change PROJECT_NAME to the name of your project
 PROJECT(FacetAnalyser)
 
