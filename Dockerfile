@@ -8,11 +8,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN git clone http://github.com/romangrothausmann/FacetAnalyser.git
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue`
+
 RUN mkdir -p FacetAnalyser_build && \
     cd FacetAnalyser_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/FacetAnalyser/ \
-	  -DCMAKE_MODULE_PATH=/opt/vtk/lib/cmake \
+	  -DCMAKE_PREFIX_PATH='/opt/vtk/lib/cmake/;/opt/itk/lib/cmake/' \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_PLUGIN=OFF \
 	  -DBUILD_EXAMPLE=ON \
