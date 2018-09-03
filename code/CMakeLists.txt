@@ -15,7 +15,7 @@ OPTION( BUILD_PLUGIN
 
 OPTION( BUILD_EXAMPLE
   "Build example"
-  OFF )
+  ON )
 
 OPTION( BUILD_TESTING
   "Build tests"
