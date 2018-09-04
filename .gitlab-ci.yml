@@ -38,6 +38,8 @@ test01:
   stage: test
   script:
     - docker pull $IMAGE_TAG:test
+    ## make demos/ from git repos available to docker env for testing: https://gitlab.com/gitlab-org/gitlab-runner/issues/1482#note_34438183
+    # - cp -a /demos/ ./demos/ # not needed any more?
     - docker run --rm
                  -v $(pwd)/demos:/tmp/demos
                  --workdir /tmp/demos/
