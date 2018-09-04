@@ -12,6 +12,7 @@ stages:
   - release
 
 variables:
+
   IMAGE_TAG: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME
 
 build:
@@ -46,6 +47,8 @@ test01:
                  --workdir /tmp/demos/
                  $IMAGE_TAG:test
                  FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp
+    ## test should result in the same file as stored by git
+    - git diff-index --quiet HEAD --
   retry: 2
 
 release:
