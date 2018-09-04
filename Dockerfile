@@ -22,7 +22,7 @@ RUN mkdir -p FacetAnalyser_build && \
 	  -DBUILD_TESTING=OFF \
 	  ../FacetAnalyser/code/ && \
     make -j"$(nproc)" && \
-    mkdir /opt/FacetAnalyser/ && cp FacetAnalyserCLI /opt/FacetAnalyser/
+    mkdir -p /opt/FacetAnalyser/bin/ && cp FacetAnalyserCLI /opt/FacetAnalyser/bin/
 
 
 FROM ubuntu:16.04
@@ -30,3 +30,6 @@ FROM ubuntu:16.04
 COPY --from=builder /opt/vtk/ /opt/vtk/
 COPY --from=builder /opt/itk/ /opt/itk/
 COPY --from=builder /opt/FacetAnalyser/ /opt/FacetAnalyser/
+
+ENV PATH="/opt/FacetAnalyser/bin/:${PATH}"
+CMD ["/opt/FacetAnalyser/bin/FacetAnalyserCLI"] 
