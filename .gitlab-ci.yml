@@ -46,6 +46,7 @@ test01:
                  --workdir /tmp/demos/
                  $IMAGE_TAG:test
                  FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp
+  retry: 2
 
 release:
   stage: release
