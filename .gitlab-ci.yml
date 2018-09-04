@@ -9,6 +9,7 @@ before_script:
 stages:
   - build
   - test
+  - release
 
 variables:
   IMAGE_TAG: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME
@@ -46,3 +47,11 @@ test01:
                  $IMAGE_TAG:test
                  FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp
 
+release:
+  stage: release
+  script:
+    - docker pull $IMAGE_TAG:test
+    - docker tag  $IMAGE_TAG:test $IMAGE_TAG:latest
+    - docker push $IMAGE_TAG:latest
+  only:
+    - master
