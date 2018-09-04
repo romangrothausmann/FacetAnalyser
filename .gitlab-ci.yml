@@ -9,11 +9,11 @@ before_script:
 stages:
   - build
 
-.build_template: &build_definition
+build:
+  stage: build
   variables:
-    IMAGE_TAG: $CI_REGISTRY_IMAGE/$CI_JOB_NAME
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME
   script:
-    - docker pull $IMAGE_TAG:latest || true
     - docker pull $IMAGE_TAG:builder-latest || true
     ## builder image for caching:
     ## https://github.com/moby/moby/issues/34715
@@ -26,14 +26,8 @@ stages:
     ## 2nd stage build using builder-latest for caching
     - docker build --pull
                    --cache-from $IMAGE_TAG:builder-latest
-                   --tag $IMAGE_TAG:$CI_COMMIT_REF_NAME
                    --tag $IMAGE_TAG:latest
                    .
     - docker push $IMAGE_TAG:builder-latest
-    - docker push $IMAGE_TAG:$CI_COMMIT_REF_NAME
     - docker push $IMAGE_TAG:latest
   retry: 2
-
-facetanalyser-cli:
-  stage: build
-  <<: *build_definition
