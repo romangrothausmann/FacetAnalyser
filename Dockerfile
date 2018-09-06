@@ -29,7 +29,6 @@ RUN mkdir -p PV_build && \
     	  -DCMAKE_INSTALL_PREFIX=/opt/paraview/ \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_TESTING=OFF \
-	  -DBUILD_SHARED_LIBS=ON \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
 	  -DPARAVIEW_ENABLE_CATALYST=OFF \
 	  ../paraview && \
@@ -57,15 +56,25 @@ RUN mkdir -p ITK_build && \
 ### FacetAnalyser
 COPY code/ /code/
 
+RUN cd PV_build/lib/ && \
+    for i in *-pv*.so; do ln -s $i ${i%-pv*}.so; done && \
+    for i in *-pv*.a; do ln -s $i ${i%-pv*}.a; done
+
 RUN mkdir -p FacetAnalyser_build && \
     cd FacetAnalyser_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/FacetAnalyser/ \
-	  -DCMAKE_PREFIX_PATH='/opt/vtk/lib/cmake/;/opt/itk/lib/cmake/' \
+	  -DITK_DIR=/opt/itk/lib/cmake/ITK-4.12/ \
+	  -DVTK_DIR=/PV_build/VTK/ \
+	  -DParaView_DIR=/PV_build/ \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_PLUGIN=ON \
 	  -DBUILD_EXAMPLE=ON \
 	  -DBUILD_TESTING=OFF \
+	  -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+	  -DCMAKE_CXX_FLAGS="-I/PV_build/" \
+	  -DCMAKE_LIBRARY_PATH=/PV_build/lib/ \
+	  -DCMAKE_SHARED_LINKER_FLAGS=-L/PV_build/lib/ \
 	  ../code/ && \
     make -j"$(nproc)" && \
     mkdir -p /opt/FacetAnalyser/bin/ && cp FacetAnalyserCLI /opt/FacetAnalyser/bin/
@@ -73,7 +82,7 @@ RUN mkdir -p FacetAnalyser_build && \
 
 FROM ubuntu:16.04
 
-COPY --from=builder /opt/vtk/ /opt/vtk/
+COPY --from=builder /opt/paraview/ /opt/paraview/
 COPY --from=builder /opt/itk/ /opt/itk/
 COPY --from=builder /opt/FacetAnalyser/ /opt/FacetAnalyser/
 
