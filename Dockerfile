@@ -43,7 +43,7 @@ RUN mkdir -p ITK_build && \
     cd ITK_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/itk/ \
-	  -DVTK_DIR=/paraview/VTK/ \
+	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_SHARED_LIBS=ON \
 	  -DBUILD_TESTING=OFF \
