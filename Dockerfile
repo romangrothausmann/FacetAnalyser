@@ -77,14 +77,44 @@ RUN mkdir -p FacetAnalyser_build && \
 	  -DCMAKE_SHARED_LINKER_FLAGS=-L/PV_build/lib/ \
 	  ../code/ && \
     make -j"$(nproc)" && \
+    make -j"$(nproc)" install && \
     mkdir -p /opt/FacetAnalyser/bin/ && cp FacetAnalyserCLI /opt/FacetAnalyser/bin/
 
 
-FROM ubuntu:16.04
+FROM nvidia/opengl:1.0-glvnd-runtime-ubuntu16.04
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglew1.13 libxt6 libglu1-mesa libqt4-opengl libqt4-help
+ 
 COPY --from=builder /opt/paraview/ /opt/paraview/
 COPY --from=builder /opt/itk/ /opt/itk/
 COPY --from=builder /opt/FacetAnalyser/ /opt/FacetAnalyser/
 
+ENV LD_LIBRARY_PATH="/opt/itk/lib/:${LD_LIBRARY_PATH}"
 ENV PATH="/opt/FacetAnalyser/bin/:${PATH}"
 CMD ["/opt/FacetAnalyser/bin/FacetAnalyserCLI"]
+
+
+ENV USERNAME faUser
+RUN useradd -m $USERNAME && \
+    echo "$USERNAME:$USERNAME" | chpasswd && \
+    usermod --shell /bin/bash $USERNAME
+
+
+# install VirtualGL
+ENV VIRTUALGL_VERSION 2.5.2
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglu1-mesa-dev mesa-utils curl ca-certificates xterm && \
+    curl -sSL https://downloads.sourceforge.net/project/virtualgl/"${VIRTUALGL_VERSION}"/virtualgl_"${VIRTUALGL_VERSION}"_amd64.deb -o virtualgl_"${VIRTUALGL_VERSION}"_amd64.deb && \
+    dpkg -i virtualgl_*_amd64.deb && \
+    /opt/VirtualGL/bin/vglserver_config -config +s +f -t && \
+    rm virtualgl_*_amd64.deb && \
+    apt-get clean && \
+    apt-get remove -y curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# nvidia-docker links
+LABEL com.nvidia.volumes.needed="nvidia_driver"
+ENV PATH /usr/local/nvidia/bin:/opt/VirtualGL/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
