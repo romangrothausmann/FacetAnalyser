@@ -18,20 +18,28 @@ variables:
 build:
   stage: build
   script:
+    - docker pull $IMAGE_TAG:system-latest || true
     - docker pull $IMAGE_TAG:builder-latest || true
     ## builder image for caching:
     ## https://github.com/moby/moby/issues/34715
     ## https://gitlab.com/gitlab-org/gitlab-omnibus-builder/merge_requests/83
     - docker build --pull
                    --cache-from $IMAGE_TAG:builder-latest
-                   --tag $IMAGE_TAG:builder-latest
-                   --target builder 
+                   --tag $IMAGE_TAG:system-latest
+                   --target system
                    .
     ## 2nd stage build using builder-latest for caching
     - docker build --pull
                    --cache-from $IMAGE_TAG:builder-latest
+                   --tag $IMAGE_TAG:builder-latest
+                   --target builder 
+                   .
+    ## 3rd stage build using system-latest and builder-latest for caching
+    - docker build --pull
+                   --cache-from $IMAGE_TAG:system-latest $IMAGE_TAG:builder-latest
                    --tag $IMAGE_TAG:test
                    .
+    - docker push $IMAGE_TAG:system-latest
     - docker push $IMAGE_TAG:builder-latest
     - docker push $IMAGE_TAG:test
   retry: 2
