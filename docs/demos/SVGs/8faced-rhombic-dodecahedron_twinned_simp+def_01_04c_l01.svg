@@ -43508,13 +43508,13 @@ CreationDate: Thu Jan 22 12:01:45 2015
        points="425.482,385.585 421.981,432.272 422.816,432.174"
        id="polygon21284" />
     <text
-       x="-67.265366"
-       y="339.14896"
+       x="-289.87357"
+       y="-67.51048"
        font-size="18"
        baseline-shift="0"
        id="text21290"
        style="font-size:18px;text-align:end;text-anchor:end;baseline-shift:0px;fill:#000000;font-family:Helvetica"
-       transform="matrix(0.90860943,-0.41764686,0.41764686,0.90860943,0,0)">$120.9^\circ$</text>
+       transform="rotate(-114.68611)">$120.9^\circ$</text>
     <text
        x="-108.84966"
        y="239.21521"
