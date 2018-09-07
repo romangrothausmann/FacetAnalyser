@@ -36,7 +36,8 @@ build:
                    .
     ## 3rd stage build using system-latest and builder-latest for caching
     - docker build --pull
-                   --cache-from $IMAGE_TAG:system-latest $IMAGE_TAG:builder-latest
+                   --cache-from $IMAGE_TAG:system-latest
+                   --cache-from $IMAGE_TAG:builder-latest
                    --tag $IMAGE_TAG:test
                    .
     - docker push $IMAGE_TAG:system-latest
