@@ -14267,11 +14267,11 @@
     </Proxy>
     <Proxy group="sources" type="XMLPolyDataReader" id="4930" servers="1">
       <Property name="FileName" id="4930.FileName" number_of_elements="1">
-        <Element index="0" value="/tmp/images/8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp"/>
+        <Element index="0" value="8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp"/>
         <Domain name="files" id="4930.FileName.files"/>
       </Property>
       <Property name="FileNameInfo" id="4930.FileNameInfo" number_of_elements="1">
-        <Element index="0" value="/tmp/images/8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp"/>
+        <Element index="0" value="8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp"/>
       </Property>
       <Property name="TimestepValues" id="4930.TimestepValues"/>
       <Property name="CellArrayInfo" id="4930.CellArrayInfo"/>
@@ -14285,11 +14285,11 @@
     </Proxy>
     <Proxy group="sources" type="XMLPolyDataReader" id="4185" servers="1">
       <Property name="FileName" id="4185.FileName" number_of_elements="1">
-        <Element index="0" value="/tmp/images/8faced-rhombic-dodecahedron_twinned_simplified.vtp"/>
+        <Element index="0" value="8faced-rhombic-dodecahedron_twinned_simplified.vtp"/>
         <Domain name="files" id="4185.FileName.files"/>
       </Property>
       <Property name="FileNameInfo" id="4185.FileNameInfo" number_of_elements="1">
-        <Element index="0" value="/tmp/images/8faced-rhombic-dodecahedron_twinned_simplified.vtp"/>
+        <Element index="0" value="8faced-rhombic-dodecahedron_twinned_simplified.vtp"/>
       </Property>
       <Property name="TimestepValues" id="4185.TimestepValues"/>
       <Property name="CellArrayInfo" id="4185.CellArrayInfo"/>
@@ -14625,11 +14625,11 @@
     </Proxy>
     <Proxy group="sources" type="XMLPolyDataReader" id="6060" servers="1">
       <Property name="FileName" id="6060.FileName" number_of_elements="1">
-        <Element index="0" value="/tmp/images/rhombic-dodecahedron_040.vtp"/>
+        <Element index="0" value="rhombic-dodecahedron_040.vtp"/>
         <Domain name="files" id="6060.FileName.files"/>
       </Property>
       <Property name="FileNameInfo" id="6060.FileNameInfo" number_of_elements="1">
-        <Element index="0" value="/tmp/images/rhombic-dodecahedron_040.vtp"/>
+        <Element index="0" value="rhombic-dodecahedron_040.vtp"/>
       </Property>
       <Property name="TimestepValues" id="6060.TimestepValues"/>
       <Property name="CellArrayInfo" id="6060.CellArrayInfo"/>
