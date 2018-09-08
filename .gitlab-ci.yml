@@ -24,12 +24,13 @@ build:
     ## https://github.com/moby/moby/issues/34715
     ## https://gitlab.com/gitlab-org/gitlab-omnibus-builder/merge_requests/83
     - docker build --pull
-                   --cache-from $IMAGE_TAG:builder-latest
+                   --cache-from $IMAGE_TAG:system-latest
                    --tag $IMAGE_TAG:system-latest
                    --target system
                    .
     ## 2nd stage build using builder-latest for caching
     - docker build --pull
+                   --cache-from $IMAGE_TAG:system-latest
                    --cache-from $IMAGE_TAG:builder-latest
                    --tag $IMAGE_TAG:builder-latest
                    --target builder 
