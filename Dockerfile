@@ -54,7 +54,7 @@ RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.
 RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
 
 ### PV with own VTK
-RUN git clone -b v5.2.0 https://gitlab.kitware.com/paraview/paraview.git && \
+RUN git clone --depth 1 -b v5.2.0 https://gitlab.kitware.com/paraview/paraview.git && \
     cd paraview && \
     git submodule update --init --recursive
 
@@ -74,7 +74,7 @@ RUN mkdir -p PV_build && \
     make -j"$(nproc)" install
 
 ### ITK with VTK from PV for ITKVtkGlue
-RUN git clone -b v4.12.2 https://itk.org/ITK.git
+RUN git clone --depth 1 -b v4.12.2 https://itk.org/ITK.git
 
 RUN mkdir -p ITK_build && \
     cd ITK_build && \
