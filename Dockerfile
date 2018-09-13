@@ -6,6 +6,7 @@ FROM ubuntu:16.04 as system
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglew1.13 libxt6 libglu1-mesa libqt4-opengl libqt4-help \
     libgl1-mesa-glx libgl1-mesa-dri \
+    libpython2.7 python-numpy \
     xterm mesa-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -29,10 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     qt4-default libqt4-opengl-dev \
     libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue` \
-    curl
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev
+    curl \
+    libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
+    python \
+    libqt4-xmlpatterns qt4-dev-tools
 
 ## new cmake essential to avoid not finding VTKConfig.cmake
 RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.sh
@@ -41,10 +42,10 @@ RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
 ### PV with own VTK
 RUN git clone --depth 1 -b v5.2.0 https://gitlab.kitware.com/paraview/paraview.git && \
     cd paraview && \
-    git submodule update --init --recursive
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-libqt4-xmlpatterns qt4-dev-tools
+    sed -i 's|https://gitlab.kitware.com/vtk/vtk.git|https://gitlab.kitware.com/romangrothausmann/vtk.git|g' .gitmodules && \
+    git add .gitmodules && \
+    git submodule update --init --recursive && \
+    cd VTK && git checkout planeIDs4vtkHull && cd .. && git add VTK
 
 RUN mkdir -p PV_build && \
     cd PV_build && \
@@ -54,6 +55,7 @@ RUN mkdir -p PV_build && \
 	  -DBUILD_TESTING=OFF \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
 	  -DPARAVIEW_ENABLE_CATALYST=OFF \
+	  -DPARAVIEW_ENABLE_PYTHON=ON \
 	  ../paraview && \
     make -j"$(nproc)" && \
     make -j"$(nproc)" install
