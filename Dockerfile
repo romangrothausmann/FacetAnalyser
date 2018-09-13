@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue` \
     curl \
     libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
+    python \
     libqt4-xmlpatterns qt4-dev-tools
 
 ## new cmake essential to avoid not finding VTKConfig.cmake
@@ -53,6 +54,7 @@ RUN mkdir -p PV_build && \
 	  -DBUILD_TESTING=OFF \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
 	  -DPARAVIEW_ENABLE_CATALYST=OFF \
+	  -DPARAVIEW_ENABLE_PYTHON=ON \
 	  ../paraview && \
     make -j"$(nproc)" && \
     make -j"$(nproc)" install
