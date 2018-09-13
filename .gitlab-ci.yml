@@ -46,7 +46,7 @@ build:
     - docker push $IMAGE_TAG:test
   retry: 2
 
-test01:
+testCLI01:
   stage: test
   script:
     - docker pull $IMAGE_TAG:test
@@ -57,6 +57,40 @@ test01:
                  --workdir /tmp/demos/
                  $IMAGE_TAG:test
                  FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp
+    ## test should result in the same file as stored by git
+    - apk update && apk upgrade && apk add --no-cache git
+    - git update-index -q --refresh
+    - git diff-index --exit-code HEAD --
+  retry: 2
+
+testPV01:
+  stage: test
+  script:
+    - docker pull $IMAGE_TAG:test
+    ## make demos/ from git repos available to docker env for testing: https://gitlab.com/gitlab-org/gitlab-runner/issues/1482#note_34438183
+    # - cp -a /demos/ ./demos/ # not needed any more?
+    - docker run --rm
+                 -v $(pwd)/:/tmp/fa/
+                 --workdir /tmp/fa/
+                 $IMAGE_TAG:test
+                 pvpython code/scripts/pvsm2webgl.py -i demos/8faced-rhombic-dodecahedron_twinned_simp+def.pvsm -o docs/demos/WebGL/8faced-rhombic-dodecahedron_twinned_simp+def.webgl -p /opt/FacetAnalyser/libFacetAnalyser.so
+    ## test should result in the same file as stored by git
+    - apk update && apk upgrade && apk add --no-cache git
+    - git update-index -q --refresh
+    - git diff-index --exit-code HEAD --
+  retry: 2
+
+testPV02:
+  stage: test
+  script:
+    - docker pull $IMAGE_TAG:test
+    ## make demos/ from git repos available to docker env for testing: https://gitlab.com/gitlab-org/gitlab-runner/issues/1482#note_34438183
+    # - cp -a /demos/ ./demos/ # not needed any more?
+    - docker run --rm
+                 -v $(pwd)/:/tmp/fa/
+                 --workdir /tmp/fa/
+                 $IMAGE_TAG:test
+                 pvpython code/scripts/pvsm2x3d.py -i 8faced-rhombic-dodecahedron_twinned_simp+def.pvsm -o docs/demos/X3D/8faced-rhombic-dodecahedron_twinned_simp+def.x3d -p /opt/FacetAnalyser/libFacetAnalyser.so
     ## test should result in the same file as stored by git
     - apk update && apk upgrade && apk add --no-cache git
     - git update-index -q --refresh
