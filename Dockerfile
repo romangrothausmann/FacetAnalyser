@@ -42,7 +42,10 @@ RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
 ### PV with own VTK
 RUN git clone --depth 1 -b v5.5.2 https://gitlab.kitware.com/paraview/paraview.git && \
     cd paraview && \
-    git submodule update --init --recursive
+    sed -i 's|https://gitlab.kitware.com/vtk/vtk.git|https://gitlab.kitware.com/romangrothausmann/vtk.git|g' .gitmodules && \
+    git add .gitmodules && \
+    git submodule update --init --recursive && \
+    cd VTK && git checkout planeIDs4vtkHull_v8.1.2 && cd .. && git add VTK
 
 RUN mkdir -p PV_build && \
     cd PV_build && \
