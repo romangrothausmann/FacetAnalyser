@@ -15,7 +15,7 @@ docker run -it \
        --user="faUser" \
        -v ${PWD}:/tmp/images \
        --workdir=/tmp/images \
-       registry.gitlab.com/romangrothausmann/facetanalyser/master \
+       registry.gitlab.com/romangrothausmann/facetanalyser/pv-5.2.0 \
        /opt/paraview/bin/paraview $@
 
 rm $XAUTH # remove to avoid accumulation of xauth settings

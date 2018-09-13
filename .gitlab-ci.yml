@@ -71,3 +71,4 @@ release:
     - docker push $IMAGE_TAG:latest
   only:
     - master
+    - pv-5.2.0
