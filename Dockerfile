@@ -6,6 +6,7 @@ FROM ubuntu:16.04 as system
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglew1.13 libxt6 libglu1-mesa libqt4-opengl libqt4-help \
     libgl1-mesa-glx libgl1-mesa-dri \
+    libosmesa6-dev \
     libpython2.7 python-numpy \
     xterm mesa-utils && \
     apt-get clean && \
@@ -32,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue` \
     curl \
     libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
+    libosmesa6-dev \
     python \
     libqt4-xmlpatterns qt4-dev-tools
 
@@ -56,6 +58,7 @@ RUN mkdir -p PV_build && \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
 	  -DPARAVIEW_ENABLE_CATALYST=OFF \
 	  -DPARAVIEW_ENABLE_PYTHON=ON \
+	  -DVTK_OPENGL_HAS_OSMESA=ON \
 	  ../paraview && \
     make -j"$(nproc)" && \
     make -j"$(nproc)" install
