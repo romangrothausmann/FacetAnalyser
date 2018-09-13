@@ -6,6 +6,7 @@ FROM ubuntu:16.04 as system
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglew1.13 libxt6 libglu1-mesa libqt4-opengl libqt4-help \
     libgl1-mesa-glx libgl1-mesa-dri \
+    libpython2.7 \
     xterm mesa-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
