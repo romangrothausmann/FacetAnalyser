@@ -29,10 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     qt4-default libqt4-opengl-dev \
     libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue` \
-    curl
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev
+    curl \
+    libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
+    libqt4-xmlpatterns qt4-dev-tools
 
 ## new cmake essential to avoid not finding VTKConfig.cmake
 RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.sh
@@ -45,9 +44,6 @@ RUN git clone --depth 1 -b v5.2.0 https://gitlab.kitware.com/paraview/paraview.g
     git add .gitmodules && \
     git submodule update --init --recursive && \
     cd VTK && git checkout planeIDs4vtkHull && cd .. && git add VTK
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-libqt4-xmlpatterns qt4-dev-tools
 
 RUN mkdir -p PV_build && \
     cd PV_build && \
