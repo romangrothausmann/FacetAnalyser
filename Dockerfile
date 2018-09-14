@@ -1,10 +1,10 @@
 ################################################################################
 # base system
 ################################################################################
-FROM ubuntu:16.04 as system
+FROM ubuntu:18.04 as system
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglew1.13 libxt6 libglu1-mesa libqt5opengl5 \
+    libglew2.0 libxt6 libglu1-mesa libqt5opengl5 libqt5help5 \
     libgl1-mesa-glx libgl1-mesa-dri \
     xterm mesa-utils
  
@@ -19,13 +19,13 @@ RUN useradd -m $USERNAME && \
 ################################################################################
 # builder
 ################################################################################
-FROM ubuntu:16.04 as builder
+FROM ubuntu:18.04 as builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ca-certificates `# essential for git over https` \
     build-essential \
-    qt5-default libqt5opengl5-dev libqt5x11extras5-dev \
+    qt5-default libqt5opengl5-dev libqt5x11extras5-dev qttools5-dev \
     libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue` \
     curl
 
