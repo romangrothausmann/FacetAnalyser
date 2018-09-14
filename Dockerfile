@@ -4,7 +4,7 @@
 FROM ubuntu:16.04 as system
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglew1.13 libxt6 libglu1-mesa libqt4-opengl libqt4-help \
+    libglew1.13 libxt6 libglu1-mesa libqt5opengl5 \
     libgl1-mesa-glx libgl1-mesa-dri \
     xterm mesa-utils
  
@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ca-certificates `# essential for git over https` \
     build-essential \
-    qt4-default libqt4-opengl-dev \
+    qt5-default libqt5opengl5-dev libqt5x11extras5-dev \
     libsm-dev libx11-dev libxt-dev libxext-dev `# needed for ITKVtkGlue` \
     curl
 
@@ -41,9 +41,6 @@ RUN git clone --depth 1 -b v5.4.0 https://gitlab.kitware.com/paraview/paraview.g
     cd paraview && \
     git submodule update --init --recursive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-libqt4-xmlpatterns qt4-dev-tools
-
 RUN mkdir -p PV_build && \
     cd PV_build && \
     cmake \
@@ -52,7 +49,7 @@ RUN mkdir -p PV_build && \
 	  -DBUILD_TESTING=OFF \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
 	  -DPARAVIEW_ENABLE_CATALYST=OFF \
-	  -DPARAVIEW_QT_VERSION=4 \
+	  -DPARAVIEW_QT_VERSION=5 \
 	  ../paraview && \
     make -j"$(nproc)" && \
     make -j"$(nproc)" install
