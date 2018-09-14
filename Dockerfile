@@ -1,10 +1,10 @@
 ################################################################################
 # base system
 ################################################################################
-FROM ubuntu:16.04 as system
+FROM ubuntu:18.04 as system
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglew1.13 libxt6 libglu1-mesa libqt5opengl5 \
+    libglew2.0 libxt6 libglu1-mesa libqt5opengl5 libqt5help5 \
     libgl1-mesa-glx libgl1-mesa-dri \
     libpython2.7 python-numpy \
     xterm mesa-utils && \
@@ -22,7 +22,7 @@ RUN useradd -m $USERNAME && \
 ################################################################################
 # builder
 ################################################################################
-FROM ubuntu:16.04 as builder
+FROM ubuntu:18.04 as builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -33,8 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
     python \
-    libqt5x11extras5-dev
-
+    libqt5x11extras5-dev qttools5-dev
+    
 ## new cmake essential to avoid not finding VTKConfig.cmake
 RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.sh
 RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
