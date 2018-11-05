@@ -63,6 +63,7 @@ RUN mkdir -p ITK_build && \
     cd ITK_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/itk/ \
+	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake" \
 	  -DCMAKE_MODULE_PATH="/opt/paraview/lib/cmake" \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DCMAKE_BUILD_TYPE=Release \
