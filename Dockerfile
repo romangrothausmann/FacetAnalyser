@@ -87,6 +87,7 @@ RUN mkdir -p FacetAnalyser_build && \
     cd FacetAnalyser_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/FacetAnalyser/ \
+	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-5.5" \
 	  -DITK_DIR=/opt/itk/lib/cmake/ITK-4.12/ \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DParaView_DIR=/PV_build/ \
