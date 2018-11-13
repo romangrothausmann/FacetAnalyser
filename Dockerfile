@@ -113,7 +113,7 @@ COPY --from=builder /opt/paraview/ /opt/paraview/
 COPY --from=builder /opt/itk/ /opt/itk/
 COPY --from=builder /opt/FacetAnalyser/ /opt/FacetAnalyser/
 
-ENV LD_LIBRARY_PATH "/opt/paraview/lib/paraview-5.2/:/opt/itk/lib/:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH "/opt/paraview/lib/paraview-5.3/:/opt/itk/lib/:${LD_LIBRARY_PATH}"
 ENV PV_PLUGIN_PATH "/opt/FacetAnalyser/"
 ENV PATH "/opt/FacetAnalyser/bin/:${PATH}"
 CMD ["/opt/FacetAnalyser/bin/FacetAnalyserCLI"]
