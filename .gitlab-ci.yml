@@ -28,6 +28,7 @@ build:
                    --tag $IMAGE_TAG:system-latest
                    --target system
                    .
+    - docker push $IMAGE_TAG:system-latest
     ## 2nd stage build using builder-latest for caching
     - docker build --pull
                    --cache-from $IMAGE_TAG:system-latest
@@ -35,14 +36,13 @@ build:
                    --tag $IMAGE_TAG:builder-latest
                    --target builder 
                    .
+    - docker push $IMAGE_TAG:builder-latest
     ## 3rd stage build using system-latest and builder-latest for caching
     - docker build --pull
                    --cache-from $IMAGE_TAG:system-latest
                    --cache-from $IMAGE_TAG:builder-latest
                    --tag $IMAGE_TAG:test
                    .
-    - docker push $IMAGE_TAG:system-latest
-    - docker push $IMAGE_TAG:builder-latest
     - docker push $IMAGE_TAG:test
   retry: 2
 
