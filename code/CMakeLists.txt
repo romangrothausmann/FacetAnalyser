@@ -44,7 +44,7 @@ IF(BUILD_TESTING)
   ADD_EXECUTABLE(FacetAnalyserTest
     FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
     FacetAnalyserTest.cxx)
-  TARGET_LINK_LIBRARIES(FacetAnalyserTest ${ITK_LIBRARIES} ${VTK_LIBRARIES})
+  TARGET_LINK_LIBRARIES(FacetAnalyserTest PRIVATE ${ITK_LIBRARIES} ${VTK_LIBRARIES})
   
   ## run tests
   ADD_TEST(NAME basicTest01 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/testing/ COMMAND FacetAnalyserTest 8faced-rhombic-dodecahedron_twinned_simplified.vtk)
@@ -58,7 +58,7 @@ IF(BUILD_PLUGIN)
     SERVER_MANAGER_SOURCES FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
     SERVER_MANAGER_XML FacetAnalyser.xml)
   
-  TARGET_LINK_LIBRARIES(FacetAnalyser ${ITK_LIBRARIES})
+  TARGET_LINK_LIBRARIES(FacetAnalyser PRIVATE ${ITK_LIBRARIES})
   INSTALL(TARGETS FacetAnalyser LIBRARY DESTINATION . )
   
   IF(BUILD_TESTING)
@@ -79,7 +79,7 @@ IF(BUILD_EXAMPLE)
   ADD_EXECUTABLE(FacetAnalyserCLI
     FacetAnalyser.cxx vtkGaussianSplatterExtended.cxx
     FacetAnalyserCLI.cxx)
-  TARGET_LINK_LIBRARIES(FacetAnalyserCLI ${ITK_LIBRARIES} ${VTK_LIBRARIES})
+  TARGET_LINK_LIBRARIES(FacetAnalyserCLI PRIVATE ${ITK_LIBRARIES} ${VTK_LIBRARIES})
   
   #------------------------------------------------------------------
 
