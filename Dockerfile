@@ -64,6 +64,7 @@ RUN mkdir -p ITK_build && \
     cd ITK_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/itk/ \
+	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-5.4" \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_SHARED_LIBS=ON \
@@ -86,6 +87,7 @@ RUN mkdir -p FacetAnalyser_build && \
     cd FacetAnalyser_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/FacetAnalyser/ \
+	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-5.4" \
 	  -DITK_DIR=/opt/itk/lib/cmake/ITK-4.12/ \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DParaView_DIR=/PV_build/ \
@@ -113,7 +115,7 @@ COPY --from=builder /opt/paraview/ /opt/paraview/
 COPY --from=builder /opt/itk/ /opt/itk/
 COPY --from=builder /opt/FacetAnalyser/ /opt/FacetAnalyser/
 
-ENV LD_LIBRARY_PATH "/opt/paraview/lib/paraview-5.2/:/opt/itk/lib/:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH "/opt/paraview/lib/paraview-5.4/:/opt/itk/lib/:${LD_LIBRARY_PATH}"
 ENV PV_PLUGIN_PATH "/opt/FacetAnalyser/"
 ENV PATH "/opt/FacetAnalyser/bin/:${PATH}"
 CMD ["/opt/FacetAnalyser/bin/FacetAnalyserCLI"]
