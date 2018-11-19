@@ -4,7 +4,7 @@
 FROM ubuntu:18.04 as system
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglew2.0 libxt6 libglu1-mesa libqt5opengl5 libqt5help5 \
+    libglew2.0 libxt6 libglu1-mesa libqt5opengl5 libqt5help5 libqt5x11extras5 \
     libgl1-mesa-glx libgl1-mesa-dri \
     libpython2.7 python-numpy \
     xterm mesa-utils && \
