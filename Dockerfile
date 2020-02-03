@@ -62,7 +62,7 @@ RUN mkdir -p PV_build && \
     make -j"$(nproc)" install
 
 ### ITK with VTK from PV for ITKVtkGlue
-RUN git clone --depth 1 -b v4.12.2 https://itk.org/ITK.git
+RUN git clone --depth 1 -b v4.12.2 https://github.com/InsightSoftwareConsortium/ITK.git
 
 RUN mkdir -p ITK_build && \
     cd ITK_build && \
