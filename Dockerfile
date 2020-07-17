@@ -92,7 +92,7 @@ RUN mkdir -p FacetAnalyser_build && \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DParaView_DIR=/PV_build/ \
 	  -DCMAKE_BUILD_TYPE=Release \
-	  -DBUILD_PLUGIN=ON \
+	  -DBUILD_PLUGIN=OFF \
 	  -DBUILD_EXAMPLE=ON \
 	  -DBUILD_TESTING=OFF \
 	  -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
