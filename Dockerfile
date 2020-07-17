@@ -33,14 +33,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
     python \
-    libqt5x11extras5-dev libqt5svg5-dev qttools5-dev
+    libqt5x11extras5-dev qttools5-dev
     
 ## new cmake essential to avoid not finding VTKConfig.cmake
-RUN curl -s https://cmake.org/files/v3.16/cmake-3.16.8-Linux-x86_64.sh -o cmake.sh
+RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.sh
 RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
 
 ### PV with own VTK
-RUN git clone --depth 1 https://gitlab.kitware.com/paraview/paraview.git && \
+RUN git clone --depth 1 -b v5.5.2 https://gitlab.kitware.com/paraview/paraview.git && \
     cd paraview && \
     git submodule update --init --recursive
 
@@ -51,7 +51,8 @@ RUN mkdir -p PV_build && \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_TESTING=OFF \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
-	  -DPARAVIEW_USE_PYTHON=ON \
+	  -DPARAVIEW_ENABLE_CATALYST=OFF \
+	  -DPARAVIEW_ENABLE_PYTHON=ON \
 	  ../paraview && \
     make -j"$(nproc)" && \
     make -j"$(nproc)" install
@@ -63,7 +64,7 @@ RUN mkdir -p ITK_build && \
     cd ITK_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/itk/ \
-	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-*" \
+	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-5.5" \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_SHARED_LIBS=ON \
@@ -86,7 +87,7 @@ RUN mkdir -p FacetAnalyser_build && \
     cd FacetAnalyser_build && \
     cmake \
     	  -DCMAKE_INSTALL_PREFIX=/opt/FacetAnalyser/ \
-	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-*" \
+	  -DParaView_CMAKE_DIR="/opt/paraview/lib/cmake/paraview-5.5" \
 	  -DITK_DIR=/opt/itk/lib/cmake/ITK-4.12/ \
 	  -DVTK_DIR=/PV_build/VTK/ \
 	  -DParaView_DIR=/PV_build/ \
