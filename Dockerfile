@@ -40,7 +40,7 @@ RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.
 RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
 
 ### PV with own VTK
-RUN git clone --depth 1 -b v5.5.2 https://gitlab.kitware.com/paraview/paraview.git && \
+RUN git clone --depth 1 -b v5.6.2 https://gitlab.kitware.com/paraview/paraview.git && \
     cd paraview && \
     sed -i 's|https://gitlab.kitware.com/vtk/vtk.git|https://gitlab.kitware.com/romangrothausmann/vtk.git|g' .gitmodules && \
     git add .gitmodules && \
