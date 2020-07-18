@@ -73,5 +73,3 @@ release:
     - docker push $IMAGE_TAG:latest
     - docker tag  $IMAGE_TAG:test $IMAGE_TAG:$CI_COMMIT_SHORT_SHA
     - docker push $IMAGE_TAG:$CI_COMMIT_SHORT_SHA
-  only:
-    - master
