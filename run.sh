@@ -11,7 +11,6 @@ docker run -it \
        --device=/dev/dri:/dev/dri \
        --env="XAUTHORITY=${XAUTH}" \
        --env="DISPLAY" \
-       --env="QT_X11_NO_MITSHM=1" \
        --user="faUser" \
        -v ${PWD}:/tmp/images \
        --workdir=/tmp/images \
