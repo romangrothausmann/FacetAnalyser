@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake
 
 ### VTK
-RUN git clone --depth 1 -b planeIDs4vtkHull https://gitlab.kitware.com/romangrothausmann/vtk.git
+RUN git clone --depth 1 -b planeIDs4vtkHull_v8.1.2 https://gitlab.kitware.com/romangrothausmann/vtk.git
 
 RUN mkdir -p VTK_build && \
     cd VTK_build && \
