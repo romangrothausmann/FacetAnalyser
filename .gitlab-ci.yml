@@ -58,7 +58,7 @@ test01:
                  -v $(pwd)/demos:/tmp/demos
                  --workdir /tmp/demos/
                  $IMAGE_TAG:test
-                 FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp
+                 FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA-hull.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA-edges.vtp
     ## test should result in the same file as stored by git
     - apk update && apk upgrade && apk add --no-cache git
     - git update-index -q --refresh
