@@ -33,19 +33,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libglew-dev libxt-dev libboost-all-dev mpi-default-dev libfontconfig1-dev \
     python \
-    libqt5x11extras5-dev qttools5-dev
+    libqt5x11extras5-dev libqt5svg5-dev qttools5-dev qtxmlpatterns5-dev-tools
     
 ## new cmake essential to avoid not finding VTKConfig.cmake
 RUN curl -s https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh -o cmake.sh
 RUN sh cmake.sh --prefix=/usr --exclude-subdir --skip-license
 
 ### PV with own VTK
-RUN git clone --depth 1 -b v5.6.2 https://gitlab.kitware.com/paraview/paraview.git && \
+RUN git clone --depth 1 -b v5.8.0 https://gitlab.kitware.com/paraview/paraview.git && \
     cd paraview && \
     sed -i 's|https://gitlab.kitware.com/vtk/vtk.git|https://gitlab.kitware.com/romangrothausmann/vtk.git|g' .gitmodules && \
     git add .gitmodules && \
     git submodule update --init --recursive && \
-    cd VTK && git checkout planeIDs4vtkHull_v8.1.2 && cd .. && git add VTK
+    cd VTK && git checkout planeIDs4vtkHull_v8.2.0 && cd .. && git add VTK
 
 RUN mkdir -p PV_build && \
     cd PV_build && \
@@ -54,8 +54,7 @@ RUN mkdir -p PV_build && \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DBUILD_TESTING=OFF \
 	  -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
-	  -DPARAVIEW_ENABLE_CATALYST=OFF \
-	  -DPARAVIEW_ENABLE_PYTHON=ON \
+	  -DPARAVIEW_USE_PYTHON=ON \
 	  ../paraview && \
     make -j"$(nproc)" && \
     make -j"$(nproc)" install
