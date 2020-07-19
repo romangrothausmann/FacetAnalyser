@@ -8,6 +8,8 @@ PROJECT(FacetAnalyser)
 ENABLE_TESTING()
 INCLUDE(CTest)
 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--disable-new-dtags") # use RPATH instead of RUNPATH (currently ignored on Debian-9), -WL tells gcc to pass option to the linker
 
 OPTION( BUILD_PLUGIN
   "Build ParaView plugin"
