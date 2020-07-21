@@ -33,11 +33,11 @@ void FilterEventHandler(vtkObject* caller, long unsigned int eventId, void* clie
 int main(int argc, char* argv[]){
 
 
-    if( argc < 8 )
+    if( argc < 9 )
         {
         std::cerr << "Usage: " << argv[0];
         std::cerr << " inputMesh";
-        std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize NumberOfExtraWS";
+        std::cerr << " SampleSize AngleUncertainty SplatRadius MinRelFacetSize NumberOfExtraWS OuterHull";
         std::cerr << " outputMesh0 [outputMesh1] [outputMesh2] ";
         std::cerr << std::endl;
         return EXIT_FAILURE;
@@ -48,19 +48,19 @@ int main(int argc, char* argv[]){
         return -1;
         }
 
-    if(!(strcasestr(argv[7],".vtp"))) {
+    if(!(strcasestr(argv[8],".vtp"))) {
         std::cerr << "The output should end with .vtp" << std::endl;
         return -1;
         }
 
-    if(argc >= 9)
-        if(!(strcasestr(argv[8],".vtp"))) {
+    if(argc >= 10)
+        if(!(strcasestr(argv[9],".vtp"))) {
             std::cerr << "The output should end with .vtp" << std::endl;
             return -1;
             }
 
-    if(argc >= 10)
-        if(!(strcasestr(argv[9],".vtp"))) {
+    if(argc >= 11)
+        if(!(strcasestr(argv[10],".vtp"))) {
             std::cerr << "The output should end with .vtp" << std::endl;
             return -1;
             }
@@ -75,6 +75,7 @@ int main(int argc, char* argv[]){
     double SplatRadius= atof(argv[4]);
     double MinRelFacetSize= atof(argv[5]);
     unsigned char NumberOfExtraWS= atoi(argv[6]);
+    unsigned char OuterHull= atoi(argv[7]);
 
     //vtkObject::SetGlobalWarningDisplay(1);
 
@@ -84,9 +85,8 @@ int main(int argc, char* argv[]){
     reader0->Update();
 
     vtkSmartPointer<FacetAnalyser> filter = vtkSmartPointer<FacetAnalyser>::New();
-
     filter->SetInputConnection(reader0->GetOutputPort());
-    filter->SetOuterHull(0);
+    filter->SetOuterHull(OuterHull);
     filter->SetSampleSize(SampleSize);
     filter->SetAngleUncertainty(AngleUncertainty);
     filter->SetSplatRadius(SplatRadius);
@@ -103,18 +103,18 @@ int main(int argc, char* argv[]){
 
 
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-    writer->SetFileName(argv[7]);
+    writer->SetFileName(argv[8]);
     writer->SetInputConnection(filter->GetOutputPort(0));
     writer->Update();
 
-    if(argc >= 9){
-        writer->SetFileName(argv[8]);
+    if(argc >= 10){
+        writer->SetFileName(argv[9]);
         writer->SetInputConnection(filter->GetOutputPort(1));
         writer->Update();
         }
 
-    if(argc >= 10){
-        writer->SetFileName(argv[9]);
+    if(argc >= 11){
+        writer->SetFileName(argv[10]);
         writer->SetInputConnection(filter->GetOutputPort(2));
         writer->Update();
         }
