@@ -317,32 +317,38 @@ int FacetAnalyser::RequestData(
     ch->SetChange(labelCnt + 1, 0);
 
 
-    for(char i= 0; i < this->NumberOfExtraWS; i++){
+    if(this->NumberOfExtraWS){
+	for(char i= 0; i < this->NumberOfExtraWS; i++){
 
-	// Add the marker image to the watershed line image
-	adder->SetInput1(borderImg);
-	adder->SetInput2(labelImg);
-	adder->Update();
-	markerImg= adder->GetOutput();
-	markerImg->DisconnectPipeline();
+	    // Add the marker image to the watershed line image
+	    adder->SetInput1(borderImg);
+	    adder->SetInput2(labelImg);
+	    adder->Update();
+	    markerImg= adder->GetOutput();
+	    markerImg->DisconnectPipeline();
 
-	// compute a gradient
-	gm->SetInput(gradientImg);
-	gm->Update();
-	gradientImg= gm->GetOutput();
-	gradientImg->DisconnectPipeline();
+	    // compute a gradient
+	    gm->SetInput(gradientImg);
+	    gm->Update();
+	    gradientImg= gm->GetOutput();
+	    gradientImg->DisconnectPipeline();
 
-	// Now apply higher order watershed
-	ws->SetInput(gradientImg);
-	ws->SetMarkerImage(markerImg);
-	ws->Update();
+	    // Now apply higher order watershed
+	    ws->SetInput(gradientImg);
+	    ws->SetMarkerImage(markerImg);
+	    ws->Update();
 
-	// delete the background label
-	ch->SetInput(ws->GetOutput());
-	ch->Update();
+	    // delete the background label
+	    ch->SetInput(ws->GetOutput());
+	    ch->Update();
 
-	labelImg= ch->GetOutput();
-	labelImg->DisconnectPipeline();
+	    labelImg= ch->GetOutput();
+	    labelImg->DisconnectPipeline();
+	    }
+	}
+    else{
+	    labelImg= ws->GetOutput();
+	    labelImg->DisconnectPipeline();
 	}
 
     this->UpdateProgress(0.7);
