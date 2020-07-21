@@ -58,7 +58,24 @@ test01:
                  -v $(pwd)/demos:/tmp/demos
                  --workdir /tmp/demos/
                  $IMAGE_TAG:test
-                 FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA-hull.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA-edges.vtp
+                 FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 2 0 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA-hull.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA-edges.vtp
+    ## test should result in the same file as stored by git
+    - apk update && apk upgrade && apk add --no-cache git
+    - git update-index -q --refresh
+    - git diff-index --exit-code HEAD --
+  retry: 2
+
+test02:
+  stage: test
+  script:
+    - docker pull $IMAGE_TAG:test
+    ## make demos/ from git repos available to docker env for testing: https://gitlab.com/gitlab-org/gitlab-runner/issues/1482#note_34438183
+    # - cp -a /demos/ ./demos/ # not needed any more?
+    - docker run --rm
+                 -v $(pwd)/demos:/tmp/demos
+                 --workdir /tmp/demos/
+                 $IMAGE_TAG:test
+                 FacetAnalyserCLI  8faced-rhombic-dodecahedron_twinned_010_deformed_wss.vtp 51 15 0.2 0.001 0 1 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA0.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA0-hull.vtp 8faced-rhombic-dodecahedron_twinned_010_deformed_wss_FA0-edges.vtp
     ## test should result in the same file as stored by git
     - apk update && apk upgrade && apk add --no-cache git
     - git update-index -q --refresh
